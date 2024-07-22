@@ -1,1 +1,1 @@
-docker run --privileged -v /run/udev:/run/udev:ro -v /home/daedalus/daedalus_core/Data:/root/data -p 9001:9001 daedalus:latest
+docker run --privileged -v /run/udev:/run/udev:ro -v /home/daedalus/daedalus_core/Data:/root/data -p 9001:9001 daedaluscore:latest
