@@ -1,14 +1,15 @@
 import os
-import qwiic_oled_display
+# import qwiic_oled_display
 from pathlib import Path
 import sys
+import argparse
 import numpy as np
 from time import sleep
 
 switch_num = 2
 delay = 5 # seconds
 folder_main = Path.home() / 'data'
-folder_paths = ['evk4_horizon', 'cmos_horizon', 'imu_horizon', 'evk4_space',  'cmos_space', 'imu_space']
+folder_names = ['evk4_horizon', 'cmos_horizon', 'imu_horizon', 'evk4_space',  'cmos_space', 'imu_space']
 folder_path_alias = ['Eh', 'Ch', 'Ih', 'Es', 'Cs', 'Is']
 
 # Function to display a string on the OLED
@@ -35,8 +36,23 @@ def get_folder_size(folder_path):
                 total_size += os.path.getsize(file_path)
     return np.max([0.1,total_size]) # Prevent zero error by setting minimum file size
 
+# Function to get paths of folders to check size of
+def get_folder_paths(args_dict):
+    folder_paths = []
+    for folder in folder_names:
+        main_dir = args_dict['data_path']
+        folder_path = os.path.join(main_dir, folder)
+        folder_paths.append(folder_path)
+
+    # Check no path has been overwritten
+    for i, alias in enumerate(folder_path_alias):
+        if args_dict[alias] is not None:
+            folder_paths[i] = args_dict[alias]
+    
+    return folder_paths
+
 # Function to get the array of folder sizes 
-def get_fsizes():
+def get_fsizes(folder_paths, main_dir):
     fsizes = []
     for folder in folder_paths:
         fsize = get_folder_size(f'{folder_main}{folder}')
@@ -89,9 +105,43 @@ def make_folder_strings(initial_sizes, final_sizes):
 
 
 
-
-
 if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+    parser.add_argument(
+		"--data_path",
+		default=str(Path.home() / 'data'),
+		help="Path of parent folder. Assumed to have folders ['evk4_horizon', 'cmos_horizon', 'imu_horizon', 'evk4_space',  'cmos_space', 'imu_space'] unless a specific path is given as an argument.",
+	)
+    parser.add_argument(
+		"--Eh",
+		help="Full path to folder containing the horizon event camera data.",
+	)
+    parser.add_argument(
+		"--Ch",
+		help="Full path to folder containing the horizon cmos data.",
+	)
+    parser.add_argument(
+		"--Ih",
+		help="Full path to folder containing the horizon IMU data.",
+	)
+    parser.add_argument(
+		"--Es",
+		help="Full path to folder containing the space event camera data.",
+	)
+    parser.add_argument(
+		"--Cs",
+		help="Full path to folder containing the space cmos data.",
+	)
+    parser.add_argument(
+		"--Is",
+		help="Full path to folder containing the space IMU data.",
+	)
+
+    args = parser.parse_args()
+    folder_paths = get_folder_paths(vars(args))
+    print(folder_paths)
     
     # Initialise display
     print("Daedalus OLED Display\n")
@@ -99,9 +149,9 @@ if __name__ == '__main__':
     myOLED.begin()
     run_display("Daedalus OLED Displayinitialising...", myOLED)
     
-    initial_sizes = get_fsizes()
+    initial_sizes = get_fsizes(folder_paths)
     sleep(delay)
-    final_sizes = get_fsizes()
+    final_sizes = get_fsizes(folder_paths)
     
     # Main loop
     while True:
