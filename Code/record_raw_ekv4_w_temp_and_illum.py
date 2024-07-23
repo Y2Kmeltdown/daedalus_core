@@ -9,6 +9,7 @@ import asyncio
 import numpy as np
 
 import neuromorphic_drivers as nd
+from mjpeg_server import MjpegServer
 
 dirname = pathlib.Path(__file__).resolve().parent
 
@@ -20,9 +21,11 @@ configuration = nd.prophesee_evk4.Configuration(
 )
 
 class Camera:
-    frame = None
-    def __init__(self, idx):
+    def __init__(self, idx, cam_dim:tuple):
         self._idx = idx
+        self.width = cam_dim[0]
+        self.height = cam_dim[1]
+        self.clear_frame()
 
     @property
     def identifier(self):
@@ -31,6 +34,7 @@ class Camera:
     # The camera class should contain a "get_frame" method
     async def get_frame(self):
         frameout = cv2.imencode('.jpg', self.frame)[1]
+        self.clear_frame()
         await asyncio.sleep(1 / 25)
         return frameout.tobytes()
     
@@ -47,6 +51,12 @@ class Camera:
         dummy method
         '''
         pass
+
+    def clear_frame(self):
+        self.frame = np.zeros(
+        (self.width, 2 * self.height),
+        dtype=np.float32,
+        )
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("serial", help="Camera serial number (for example 00050423)")
@@ -67,6 +77,12 @@ parser.add_argument(
     type=float,
     help="Maximum interval between file flushes in seconds",
 )
+parser.add_argument(
+    "route",
+    default="cam0",
+    type=str,
+    help="Path to stream directory"
+)
 args = parser.parse_args()
 
 output_directory = pathlib.Path(args.recordings).resolve() / f"evk4_{args.serial}"
@@ -80,8 +96,24 @@ name = (
     .replace(":", "-")
 )
 
+
+
+
 with nd.open(configuration=configuration, raw=True, serial=args.serial) as device:
     print(f"Successfully started EVK4 {args.serial}")
+
+    server = MjpegServer()
+    cams = {args.route: Camera(0, (device.properties().width, device.properties().height))}
+    for route, cam in cams.items():
+        # add routes
+        server.add_stream(route, cam)
+    try:
+        # start server
+        server.start()
+    finally:
+        server.stop()
+        for cam in cams.values():
+            cam.stop()
 
     # save the camera biases
     with open(output_directory / f"{name}_metadata.json", "w") as json_file:
@@ -113,7 +145,10 @@ with nd.open(configuration=configuration, raw=True, serial=args.serial) as devic
         next_flush = start_time + flush_interval
         next_measurement = start_time
         for status, packet in device:
+
             #Set Frame method here
+            cams[args.route].set_frame(packet)
+            
             events.write(packet)
             events_cursor += len(packet)
             try:
