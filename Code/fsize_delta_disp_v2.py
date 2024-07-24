@@ -5,6 +5,9 @@ import sys
 import argparse
 import numpy as np
 from time import sleep
+import logging
+
+
 
 switch_num = 2
 delay = 5 # seconds
@@ -55,7 +58,7 @@ def get_folder_paths(args_dict):
 def get_fsizes(folder_paths, main_dir):
     fsizes = []
     for folder in folder_paths:
-        fsize = get_folder_size(f'{folder_main}{folder}')
+        fsize = get_folder_size(f'{folder}')
         fsizes.append(fsize)
     return fsizes
 
@@ -149,9 +152,9 @@ if __name__ == '__main__':
     myOLED.begin()
     run_display("Daedalus OLED Displayinitialising...", myOLED)
     
-    initial_sizes = get_fsizes(folder_paths)
+    initial_sizes = get_fsizes(folder_paths, args.data_path)
     sleep(delay)
-    final_sizes = get_fsizes(folder_paths)
+    final_sizes = get_fsizes(folder_paths, args.data_path)
     
     # Main loop
     while True:
@@ -172,7 +175,8 @@ if __name__ == '__main__':
             
             # Update folder sizes    
             initial_sizes = final_sizes
-            final_sizes = get_fsizes()
+            final_sizes = get_fsizes(folder_paths, args.data_path)
+
              
         except (KeyboardInterrupt, SystemExit) as exErr:
             print("\Exiting fsize delta script.")
