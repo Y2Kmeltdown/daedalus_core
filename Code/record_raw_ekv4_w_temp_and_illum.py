@@ -83,6 +83,12 @@ parser.add_argument(
     type=str,
     help="Path to stream directory"
 )
+parser.add_argument(
+    "port",
+    default=8000,
+    type=int,
+    help="Port at which server is available on"
+)
 args = parser.parse_args()
 
 output_directory = pathlib.Path(args.recordings).resolve() / f"evk4_{args.serial}"
@@ -102,7 +108,7 @@ name = (
 with nd.open(configuration=configuration, raw=True, serial=args.serial) as device:
     print(f"Successfully started EVK4 {args.serial}")
 
-    server = MjpegServer()
+    server = MjpegServer(port=args.port)
     cams = {args.route: Camera(0, (device.properties().width, device.properties().height))}
     for route, cam in cams.items():
         # add routes
@@ -148,7 +154,7 @@ with nd.open(configuration=configuration, raw=True, serial=args.serial) as devic
 
             #Set Frame method here
             cams[args.route].set_frame(packet)
-            
+
             events.write(packet)
             events_cursor += len(packet)
             try:
