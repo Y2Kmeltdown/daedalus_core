@@ -78,13 +78,13 @@ parser.add_argument(
     help="Maximum interval between file flushes in seconds",
 )
 parser.add_argument(
-    "route",
+    "--route",
     default="cam0",
     type=str,
     help="Path to stream directory"
 )
 parser.add_argument(
-    "port",
+    "--port",
     default=8000,
     type=int,
     help="Port at which server is available on"

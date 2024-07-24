@@ -29,9 +29,10 @@ def snapshot(camera:Picamera2, data_path:str):
         "timestamp":str(ct),
         "timestamp(ns)":check_time
     }
-    with open('{data_path}/cam_{camera.camera_idx}_metadata_{timestr}.json', 'w') as f:
+    
+    with open(f'{data_path}/cam_{camera.camera_idx}_metadata_{timestr}.json', 'w') as f:
         f.write(json.dumps([imgMetadata2, imgMetadata]))
-    request.save('{data_path}/cam_{camera.camera_idx}_image_{timestr}.png')
+    request.save('main', f'{data_path}/cam_{camera.camera_idx}_image_{timestr}.png')
     request.release()
 
 def cameraControls(camera:Picamera2, jsonConfig:str):
@@ -75,12 +76,12 @@ if __name__ == "__main__":
     
     
     
-    picam = Picamera2(args.camera)
+    picam = Picamera2(int(args.camera))
     config = picam.create_still_configuration()
     picam.configure(config)
     picam.start()
     time.sleep(1)
-    cameraControls(picam)
+    cameraControls(picam, args.config)
 
     time.sleep(2)
     # snapshot(picam0, args.data_path)

@@ -69,7 +69,7 @@ if __name__ == '__main__':
 
 	parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-	parser.add_argument("i2c_address", help="I2C address for IMU")
+	parser.add_argument("i2c_address", help="I2C address for IMU", type=str)
 	parser.add_argument(
 		"--path",
 		default=str(Path.home() / 'data/imu_horizon'),
@@ -78,7 +78,7 @@ if __name__ == '__main__':
 	args = parser.parse_args()
 
 	try:
-		readIMU(args.i2c_address, args.path)
+		readIMU(int(args.i2c_address, 16), args.path)
 	except (KeyboardInterrupt, SystemExit) as exErr:
 		print("\nEnding imu_reader.py")
 		sys.exit(0)
