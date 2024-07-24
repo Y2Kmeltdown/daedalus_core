@@ -1,5 +1,5 @@
 import os
-# import qwiic_oled_display
+import qwiic_oled_display
 from pathlib import Path
 import sys
 import argparse
