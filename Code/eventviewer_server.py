@@ -145,6 +145,8 @@ eventProcess.start()
 
 try:
     server.start()
+except KeyboardInterrupt:
+    logger.warning("Keyboard Interrupt, exiting...")
 finally:
     server.stop()
     cam.stop()
