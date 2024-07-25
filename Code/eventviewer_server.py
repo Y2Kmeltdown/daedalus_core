@@ -11,8 +11,8 @@ import neuromorphic_drivers as nd
 from mjpeg_server import MjpegServer
 
 #TODO fix colour map of event viewer
-#TODO fix web layout of event viewer
-#TODO increase integration time for frames
+#TODO increase integration time for frames (not really necessary anymore)
+#TODO shrink encoded array using CV2 resize and update clear function to match shrunk size
 #TODO make the program exitable (Ask Alex)
 
 dirname = pathlib.Path(__file__).resolve().parent
@@ -42,10 +42,9 @@ class Camera:
         self.frame[
             packet["dvs_events"]["y"],
             packet["dvs_events"]["x"],
-            ] = packet["dvs_events"]["t"].astype(np.float32) * (
-            packet["dvs_events"]["on"].astype(np.float32) * 2.0 - 1.0
-            )
-        frameout = cv2.imencode('.jpg', self.frame)[1]
+            ] = 255
+        #testframe = cv2.resize(self.frame, dsize=(54, 140), interpolation=cv2.INTER_CUBIC)
+        frameout = cv2.imencode('.jpg', np.flip(self.frame, 0))[1]
         self.clear_frame()
         await asyncio.sleep(1 / 25)
         return frameout.tobytes()
@@ -58,7 +57,7 @@ class Camera:
 
     def clear_frame(self):
         self.frame = np.zeros(
-        (self.width, 2 * self.height),
+        (self.height, self.width),
         dtype=np.float32,
         )
 
@@ -91,7 +90,8 @@ def getEvents(out_q):
             out_q.put(packet)
             
 eventQueue = queue.LifoQueue()
-eventProcess = threading.Thread(target=getEvents, args=(eventQueue, ))     
+eventProcess = threading.Thread(target=getEvents, args=(eventQueue, ))   
+eventProcess.daemon=True  
 server = MjpegServer(port=args.port)
 cam = Camera(0, (cam_width, cam_height), eventQueue)
 server.add_stream(args.route, cam)
