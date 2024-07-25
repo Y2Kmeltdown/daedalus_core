@@ -116,12 +116,6 @@ configuration = nd.prophesee_evk4.Configuration(
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("serial", help="Camera serial number (for example 00050423)")
 parser.add_argument(
-    "--route",
-    default="cam0",
-    type=str,
-    help="Path to stream directory"
-)
-parser.add_argument(
     "--port",
     default=8000,
     type=int,
