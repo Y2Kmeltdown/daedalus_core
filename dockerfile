@@ -6,6 +6,7 @@ ENV HOME=/root \
 	LANG=en_US.UTF-8 \
 	LANGUAGE=en_US.UTF-8 \
 	LC_ALL=C.UTF-8 \
+    #SERIAL_0=00042412 \
     SERIAL_0=00050869 \
     SERIAL_1=00050591 \
     I2C_0=0x69 \
@@ -65,5 +66,5 @@ EXPOSE 8001
 
 # Run Scripts via supervisord
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
-
+#CMD ["python3", "/root/code/test.py", "--recordings /root/data/evk4_horizon --route horizon --port 8000 ${SERIAL_0}"]
 
