@@ -4,7 +4,6 @@ import datetime
 import pathlib
 import json
 import time
-import cv2
 
 import neuromorphic_drivers as nd
 

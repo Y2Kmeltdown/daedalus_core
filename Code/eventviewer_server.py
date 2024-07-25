@@ -1,6 +1,4 @@
 import argparse
-import datetime
-import pathlib
 import cv2
 import asyncio
 import numpy as np
@@ -15,8 +13,6 @@ from mjpeg_server import MjpegServer
 #TODO shrink encoded array using CV2 resize and update clear function to match shrunk size
 #TODO make the program exitable (Ask Alex)
 #TODO related to previous Item on exit evk3 is no longer discoverable by docker container until removing the docker container and replugging the evk 3. Investigate issue (Ask Alex)
-
-dirname = pathlib.Path(__file__).resolve().parent
 
 configuration = nd.prophesee_evk4.Configuration(
     biases=nd.prophesee_evk4.Biases(
