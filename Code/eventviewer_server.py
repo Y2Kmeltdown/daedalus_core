@@ -6,7 +6,6 @@ import threading
 import queue
 import logging
 import os
-import aiohttp
 from aiohttp import web, MultipartWriter
 import neuromorphic_drivers as nd
 
@@ -50,45 +49,6 @@ class StreamHandler:
                     break
             await response.write(b"\r\n")
 
-class MjpegServer:
-
-    def __init__(self, host='0.0.0.0', port=8080):
-        self._port = port
-        self._host = host
-        self._app = web.Application()
-        self._cam_routes = []
-
-    async def root_handler(self, request):
-        # TO-DO : load page with links
-        text = 'Available streams:\n\n'
-        for route in self._cam_routes:
-            text += f"{route} \n"
-        return aiohttp.web.Response(text=text)
-
-    def add_stream(self, route, cam):
-        route = f"/{route}"
-        self._cam_routes.append(route)
-        assert hasattr(cam, 'get_frame'), "arg 'cam' should have a 'get_frame' method"
-        self._app.router.add_route("GET", f"{route}", StreamHandler(cam))
-
-    def start(self):
-        self._app.router.add_route("GET", "/", self.root_handler)
-        web.run_app(self._app, host=self._host, port=self._port)
-
-    def stop(self):
-        '''
-        dummy method
-        actions to be take on closing can be added here
-        '''
-        pass
-
-configuration = nd.prophesee_evk4.Configuration(
-    biases=nd.prophesee_evk4.Biases(
-        diff_off=102,  # default: 102
-        diff_on=73,  # default: 73
-    )
-)
-
 class Camera:
     def __init__(self, idx, cam_dim:tuple, eventQueue:queue.Queue):
         self._idx = idx
@@ -126,6 +86,33 @@ class Camera:
         dtype=np.float32,
         )
 
+class MjpegServer:
+
+    def __init__(self, cam:Camera, host='0.0.0.0', port=8080):
+        self._port = port
+        self._host = host
+        self._app = web.Application()
+        self._cam_routes = []
+        self._cam = cam
+
+    def start(self):
+        self._app.router.add_route("GET", "/", StreamHandler(self._cam))
+        web.run_app(self._app, host=self._host, port=self._port)
+
+    def stop(self):
+        '''
+        dummy method
+        actions to be take on closing can be added here
+        '''
+        pass
+
+configuration = nd.prophesee_evk4.Configuration(
+    biases=nd.prophesee_evk4.Biases(
+        diff_off=102,  # default: 102
+        diff_on=73,  # default: 73
+    )
+)
+
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("serial", help="Camera serial number (for example 00050423)")
 parser.add_argument(
@@ -157,9 +144,9 @@ def getEvents(out_q):
 eventQueue = queue.LifoQueue()
 eventProcess = threading.Thread(target=getEvents, args=(eventQueue, ))   
 eventProcess.daemon=True  
-server = MjpegServer(port=args.port)
+
 cam = Camera(0, (cam_width, cam_height), eventQueue)
-server.add_stream(args.route, cam)
+server = MjpegServer(cam=cam, port=args.port)
 eventProcess.start()
 
 try:
