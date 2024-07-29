@@ -11,7 +11,6 @@ import neuromorphic_drivers as nd
 
 #TODO fix colour map of event viewer
 #TODO increase integration time for frames (not really necessary anymore)
-#TODO shrink encoded array using CV2 resize and update clear function to match shrunk size
 #TODO make the program exitable (Ask Alex)
 #TODO related to previous Item on exit evk3 is no longer discoverable by docker container until removing the docker container and replugging the evk 3. Investigate issue (Ask Alex)
 
@@ -50,10 +49,11 @@ class StreamHandler:
             await response.write(b"\r\n")
 
 class Camera:
-    def __init__(self, idx, cam_dim:tuple, eventQueue:queue.Queue):
+    def __init__(self, idx, cam_dim:tuple, eventQueue:queue.Queue, camScale:int = 1):
         self._idx = idx
         self.width = cam_dim[0]
         self.height = cam_dim[1]
+        self.scale = camScale
         self.clear_frame()
         self.events = eventQueue
 
@@ -68,7 +68,8 @@ class Camera:
             packet["dvs_events"]["y"],
             packet["dvs_events"]["x"],
             ] = 255
-        #testframe = cv2.resize(self.frame, dsize=(54, 140), interpolation=cv2.INTER_CUBIC)
+        if self.scale != 1:
+            self.frame = cv2.resize(self.frame, dsize=(self.width//self.scale, self.height//self.scale), interpolation=cv2.INTER_CUBIC)
         frameout = cv2.imencode('.jpg', np.flip(self.frame, 0))[1]
         self.clear_frame()
         await asyncio.sleep(1 / 25)
@@ -139,7 +140,7 @@ eventQueue = queue.LifoQueue()
 eventProcess = threading.Thread(target=getEvents, args=(eventQueue, ))   
 eventProcess.daemon=True  
 
-cam = Camera(0, (cam_width, cam_height), eventQueue)
+cam = Camera(0, (cam_width, cam_height), eventQueue, camScale=2)
 server = MjpegServer(cam=cam, port=args.port)
 eventProcess.start()
 
