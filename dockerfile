@@ -10,7 +10,9 @@ ENV HOME=/root \
     #SERIAL_0=00050869 \
     SERIAL_1=00050591 \
     I2C_0=0x69 \
-    I2C_1=0x68
+    I2C_1=0x68 \
+    SUPERVISORD_PORT=9000 \
+    MJPEG_PORT=8000
 
 # Install base packages
 RUN apt-get update
@@ -60,8 +62,8 @@ COPY /Config/cam1_config.json /root/config/cam1_config.json
 COPY /Code /root/code
 #COPY /Data /root/data
 
-EXPOSE 9001
-EXPOSE 8000
+EXPOSE ${SUPERVISORD_PORT}
+EXPOSE ${MJPEG_PORT}
 EXPOSE 8001
 
 # Run Scripts via supervisord

@@ -8,7 +8,19 @@ You can then pull the docker image from `y2kmeltdown/daedaluscore` onto a raspbe
 For specific installation steps you can modify these values of the docker run command.
 
 ### Environment Variables
-port
+```docker
+    HOME=/root \
+	DEBIAN_FRONTEND=noninteractive \
+	LANG=en_US.UTF-8 \
+	LANGUAGE=en_US.UTF-8 \
+	LC_ALL=C.UTF-8 \
+    SERIAL_0=00042412 \
+    SERIAL_1=00050591 \
+    I2C_0=0x69 \
+    I2C_1=0x68 \
+    SUPERVISORD_PORT=9000 \
+    MJPEG_PORT=8000
+```
 ### Volumes
 A data volume must be mapped at the image runtime to ensure data is not erased when the container closes. Data is typically generated in the directory `/root/data` inside the docker container for all sensors so ensure this volume is mapped externally.
 
@@ -18,7 +30,7 @@ To ensure components of the raspberry pi are accessible to the docker container 
 Port mapping differs depending on configuration but generally port `9001` is used for the supervisord monitoring page and should be mapped externally. Daedalus core also makes use of mjpeg servers to stream video data out which will also require port mapping. By default the mjpeg server listens on port `8000`. All ports can be modified through the environment variables as well so you can adjust your port mapping to which ever port you want to use.
 
 ### Settings
-To operate properly the dokcer container must be run in privileged mode. This ensures that all interfaces are exposed to the container such as i2c, CSI, USB and SPI. ensure the `--provilieged` tag is used when running the container.
+To operate properly the dokcer container must be run in privileged mode. This ensures that all interfaces are exposed to the container such as i2c, CSI, USB and SPI. ensure the `--privileged` tag is used when running the container.
 
 To ensure that the container stays active in the event a script causes the container to crash the restart tag should be used and the setting always should be used e.g. `--restart always`.
 
@@ -35,6 +47,9 @@ You can also use a raspberry pi image preloaded with the docker container and th
 
 ## How to use
 
+### Accessing supervisord
+
+### Accessing mjpeg server
 
 ## Modifying Daedalus Core
 
