@@ -142,19 +142,12 @@ eventProcess.daemon=True
 
 cam = Camera(0, (cam_width, cam_height), eventQueue, camScale=2)
 server = MjpegServer(cam=cam, port=args.port)
-eventProcess.start()
 
 try:
+    eventProcess.start()
     server.start()
 except KeyboardInterrupt:
     logger.warning("Keyboard Interrupt, exiting...")
 finally:
     server.stop()
     cam.stop()
-
-
-
-        
-        
-
-            
