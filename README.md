@@ -8,7 +8,7 @@ You can then pull the docker image from `y2kmeltdown/daedaluscore` onto a raspbe
 For specific installation steps you can modify these values of the docker run command.
 
 ### Environment Variables
-
+port
 ### Volumes
 A data volume must be mapped at the image runtime to ensure data is not erased when the container closes. Data is typically generated in the directory `/root/data` inside the docker container for all sensors so ensure this volume is mapped externally.
 
