@@ -37,13 +37,15 @@ def snapshot(camera:Picamera2, data_path:str):
 
 def cameraControls(camera:Picamera2, jsonConfig:str):
     if jsonConfig is not None:
+        camera.set_controls({"AfMode" : controls.AfModeEnum.Manual}) # Autofocus mode set last word to either Manual, Auto or Continuous
+        camera.set_controls({"NoiseReductionMode" : controls.draft.NoiseReductionModeEnum.Off}) # Noise Reduction Mode set last word to either Off, Fast or HighQuality
         settings = json.load(jsonConfig)
+        print(settings)
         for setting, value in settings:
             camera.set_controls({setting:value})
         #testItem = "AnalogueGain"
         #min_val, max_val, default_val = picam2.camera_controls[testItem]
         #print((min_val, max_val, default_val))
-        #camera.set_controls({"AfMode" : controls.AfModeEnum.Manual}) # Autofocus mode set last word to either Manual, Auto or Continuous
         #camera.set_controls({"NoiseReductionMode" : controls.draft.NoiseReductionModeEnum.Off}) # Noise Reduction Mode set last word to either Off, Fast or HighQuality
         #camera.set_controls({"AeEnable" : False}) # Auto Exposure enable True or False
         #camera.set_controls({"LensPosition" : 32}) # Lens Postion values 0 to 32 metadata reports 15 as max??? Values in meters
