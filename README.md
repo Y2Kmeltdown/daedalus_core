@@ -47,9 +47,31 @@ You can also use a raspberry pi image preloaded with the docker container and th
 
 ## How to use
 
+The best way to interact with the processes running on the raspberry pi is is to use your computer as a network host and connect a direct ethernet cable to the raspberry pi. On windows you can do this by navigating to `control panel` then to 
+`network and internet` then `network and sharing center` Finally to `Change Adapter Options` on the left side of control panel. From this page make note of the ethernet adapter you will be connecting to the raspberry pi. From this stage there are two options of how to set your computer as host.
+#### Automatic Method
+Navigate to the primary adapter which you use for internet connection then right click on the adapter and go to properties. In properties navigate to the sharing tab from the tabs at the top of the window. There will be a check box option that says "Allow other network users to connect through this computer's Internet connection". Check that tick box then underneath there is a drop down box that says "Home networking connectio:". Select the ethernet adapter you are using for the raspberry pi in that dropdown box and now you should have a connection to the raspberry pi which you can test by typing `ipconfig /all` to find the ip address of the ethernet interface which is most likely `192.168.137.1`. Then you can type the command `arp -a` which will list all of the ip addresses connected to each interface which should include the raspberry pi. If you have bonjour installed you can also ping the raspberry pi by it's hostname `raspberrypi.local`
+#### Manual Method
+This method is mostly just an explanation of how windows works as a host device. From the interfaces section right click on the ethernet adapter which you will be using for the raspberry pi then go to properties. Inside the group box labelled "This connection uses the following items", locate the option "Internet Protocol Version 4 (TCP/IPv4)". Highlight the option then click properties. Change the toggle box selection from "Optain an IP address automatically" to "Use the following IP address:", then in the group box underneath enter the following values for each row:
+| Field Name      | Value           |
+|-----------------|-----------------|
+| IP Address:     | `192.168.137.1` |
+| Subnet Mask:    | `255.255.255.0` |
+| Default gateway | `192.168.137.1` |
+
+You will be forced to enter DNS addresses as well you can enter any DNS address you want to use normal DNS address can be something like `1.1.1.1` (Cloudflare) and `8.8.8.8` (Google)
+
+The specific ip address `192.168.137.1` is important to windows because windows natively uses that ip address to run a dhcp server on which will automatically provide ip addresses to connected devices so that the sharing option can actually share internet connections to connected devices.
+
 ### Accessing supervisord
 
+Once you have connected to the same network as the raspberry pi you can access supervisord web interface on either `raspberrypi.local:9000` or if you cannot resolve the hostname of the pi `{Pi IP address}:9000`.
+
+On the supervisord webpage you will see all sensor processes running or failing. Clicking on the processes will bring up logs which will display whatever inforamtion is being logged but most importantly if the process is failing it displays the error information.
+
 ### Accessing mjpeg server
+
+The mjpeg server is used to display event data through a network stream to view externally from the pi. This process should only be used to view data and should not be left running while collecting long term event data. This server is primarily meant to aid in adjusting the focus of the event cameras before commencing data collection. The mjpeg servers can be accessed on `raspberrypi.local:8000` and `raspberrypi.local:8001` for each event camera connected. If you cannot resolve the hostname of the pi `{Pi IP address}:8000` and `{Pi IP address}:8001`. The mjpeg server is a view only webpage with a single stream of jpeg frames in the center of the page.
 
 ## Modifying Daedalus Core
 
