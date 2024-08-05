@@ -1,4 +1,4 @@
-# FROM balenalib/rpi-raspbian:bookworm
+# TODO Set up environment variables in a way that I can automatically add new sensors to  supervisord config purely through environment variables like how mornedhels/enshrouded-server does it
 FROM arm64v8/debian:latest
 
 ENV HOME=/root \
