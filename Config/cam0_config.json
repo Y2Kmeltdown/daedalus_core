@@ -1,8 +1,4 @@
 {
-    "LensPosition": 32,
-    "Saturation": 11,
-    "Sharpness": 8,
-    "AnalogueGain": 0,
-    "Brightness": 0,
-    "Contrast": 16
+    "LensPosition": 0,
+    "AnalogueGain": 8
 }
