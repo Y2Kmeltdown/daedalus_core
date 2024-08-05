@@ -4,9 +4,6 @@ import datetime
 import pathlib
 import json
 import time
-import cv2
-import asyncio
-import numpy as np
 
 import neuromorphic_drivers as nd
 
@@ -18,35 +15,6 @@ configuration = nd.prophesee_evk4.Configuration(
         diff_on=73,  # default: 73
     )
 )
-
-class Camera:
-    frame = None
-    def __init__(self, idx):
-        self._idx = idx
-
-    @property
-    def identifier(self):
-        return self._idx
-
-    # The camera class should contain a "get_frame" method
-    async def get_frame(self):
-        frameout = cv2.imencode('.jpg', self.frame)[1]
-        await asyncio.sleep(1 / 25)
-        return frameout.tobytes()
-    
-    async def set_frame(self, packet):
-        self.frame[
-            packet["dvs_events"]["x"],
-            packet["dvs_events"]["y"],
-            ] = packet["dvs_events"]["t"].astype(np.float32) * (
-            packet["dvs_events"]["on"].astype(np.float32) * 2.0 - 1.0
-            )
-        
-    def stop(self):
-        '''
-        dummy method
-        '''
-        pass
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("serial", help="Camera serial number (for example 00050423)")
@@ -80,18 +48,18 @@ name = (
     .replace(":", "-")
 )
 
-with nd.open(configuration=configuration, raw=True, serial=args.serial) as device:
+with nd.open(raw=True, serial=args.serial) as device:#configuration=configuration
     print(f"Successfully started EVK4 {args.serial}")
 
     # save the camera biases
     with open(output_directory / f"{name}_metadata.json", "w") as json_file:
-        configuration_dict = dataclasses.asdict(configuration)
-        configuration_dict["clock"] = configuration_dict["clock"].name
+        #configuration_dict = dataclasses.asdict(configuration)
+        #configuration_dict["clock"] = configuration_dict["clock"].name
         json.dump(
             {
                 "system_time": time.time(),
                 "properties": dataclasses.asdict(device.properties()),
-                "configuration": configuration_dict,
+                "configuration": "NONE",#configuration_dict,
             },
             json_file,
             indent=4,
@@ -113,7 +81,6 @@ with nd.open(configuration=configuration, raw=True, serial=args.serial) as devic
         next_flush = start_time + flush_interval
         next_measurement = start_time
         for status, packet in device:
-            #Set Frame method here
             events.write(packet)
             events_cursor += len(packet)
             try:
