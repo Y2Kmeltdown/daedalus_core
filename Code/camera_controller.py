@@ -68,6 +68,12 @@ parser.add_argument(
     help="Path of the directory where recordings are stored",
 )
 parser.add_argument(
+    "--timer",
+    default=10,
+    type=int,
+    help="Time in seconds between snapshots"
+)
+parser.add_argument(
     "--config",
     type=str,
     help="Path to configuration json for camera properties",
@@ -75,9 +81,6 @@ parser.add_argument(
 args = parser.parse_args()
 
 if __name__ == "__main__":
-    
-    
-    
     picam = Picamera2(int(args.camera))
     config = picam.create_still_configuration()
     picam.configure(config)
@@ -91,4 +94,4 @@ if __name__ == "__main__":
     # TODO UNCOMMENT THIS WHEN FINISHED TESTING
     while True:
         snapshot(picam, args.data_path)
-        time.sleep(10)
+        time.sleep(args.timer)
