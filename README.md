@@ -8,26 +8,25 @@ You can then pull the docker image from `y2kmeltdown/daedaluscore` onto a raspbe
 For specific installation steps you can modify these values of the docker run command.
 
 ### Environment Variables
-```docker
-    HOME=/root \
-	DEBIAN_FRONTEND=noninteractive \
-	LANG=en_US.UTF-8 \
-	LANGUAGE=en_US.UTF-8 \
-	LC_ALL=C.UTF-8 \
-    SERIAL_0=00042412 \
-    SERIAL_1=00050591 \
-    I2C_0=0x69 \
-    I2C_1=0x68 \
-    SUPERVISORD_PORT=9000 \
-    MJPEG_PORT=8000
-```
+| Environment Variable | Default | Description |
+|----------------------|---------|-------------|
+| **HOME**                  | /root          | Home Directory of docker user |
+| **DEBIAN_FRONTEND**       | noninteractive | Specify for an automatic installation with no interactions |
+| **SERIAL_0**              | 00050869           | Serial number of event camera 0 |
+| **SERIAL_1**              | 00050591           | Serial number of event camera 1 |
+| **I2C_0**                 | 0x69           | i2c address of accelerometer 0  |
+| **I2C_1**                 | 0x68           | i2c address of accelerometer 0  |
+| **SUPERVISORD_PORT**      | 9000           | Supervisord web port            |
+| **MJPEG_PORT_0**          | 8000           | Video stream port of mjpeg server 0 |
+| **MJPEG_PORT_1**          | 8001           | Video stream port of mjpeg server 1 |
+
 ### Volumes
 A data volume must be mapped at the image runtime to ensure data is not erased when the container closes. Data is typically generated in the directory `/root/data` inside the docker container for all sensors so ensure this volume is mapped externally.
 
 To ensure components of the raspberry pi are accessible to the docker container the udev rules need to be transferred to the container from the `/run/udev` directory. Ensure this is mapped one to one in the docker container as a read only directory, e.g. `-v /run/udev:/run/udev:ro`.
 
 ### Ports
-Port mapping differs depending on configuration but generally port `9000` is used for the supervisord monitoring page and should be mapped externally. Daedalus core also makes use of mjpeg servers to stream video data out which will also require port mapping. By default the mjpeg server listens on port `8000`. All ports can be modified through the environment variables as well so you can adjust your port mapping to which ever port you want to use.
+Port mapping differs depending on configuration but generally port `9000` is used for the supervisord monitoring page and should be mapped externally. Daedalus core also makes use of mjpeg servers to stream video data out which will also require port mapping. By default the mjpeg servers listen on ports `8000` and `8001`. All ports can be modified through the environment variables as well so you can adjust your port mapping to which ever port you want to use.
 
 ### Settings
 To operate properly the dokcer container must be run in privileged mode. This ensures that all interfaces are exposed to the container such as i2c, CSI, USB and SPI. ensure the `--privileged` tag is used when running the container.
