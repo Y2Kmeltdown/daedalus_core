@@ -3,6 +3,8 @@ import datetime
 import json
 import argparse
 from pathlib import Path
+import logging
+
 from picamera2 import Picamera2
 from libcamera import controls
 
@@ -39,24 +41,26 @@ def cameraControls(camera:Picamera2, jsonConfig:str):
     if jsonConfig is not None:
         camera.set_controls({"AfMode" : controls.AfModeEnum.Manual}) # Autofocus mode set last word to either Manual, Auto or Continuous
         camera.set_controls({"NoiseReductionMode" : controls.draft.NoiseReductionModeEnum.Off}) # Noise Reduction Mode set last word to either Off, Fast or HighQuality
-        settings = json.load(jsonConfig)
-        print(settings)
-        for setting, value in settings:
-            camera.set_controls({setting:value})
-        #testItem = "AnalogueGain"
-        #min_val, max_val, default_val = picam2.camera_controls[testItem]
-        #print((min_val, max_val, default_val))
-        #camera.set_controls({"NoiseReductionMode" : controls.draft.NoiseReductionModeEnum.Off}) # Noise Reduction Mode set last word to either Off, Fast or HighQuality
-        #camera.set_controls({"AeEnable" : False}) # Auto Exposure enable True or False
-        #camera.set_controls({"LensPosition" : 32}) # Lens Postion values 0 to 32 metadata reports 15 as max??? Values in meters
-        #camera.set_controls({"ExposureTime" : 10000}) # Exposure time values 0 to 220417486 metadata reports inconsistant values ranging from 12000 to 16000 when set to max value??? Values are in microseconds
-        #picam2.set_controls({"AnalogueGain" : 0}) # Analogue Gain values 1 to 16
-        #picam2.set_controls({"DigitalGain" : 0}) # According to docs don't bother messing with digital gain
-        #picam2.set_controls({"ExposureValue" : 0})
-        #picam2.set_controls({"Brightness" : 0})
-        #picam2.set_controls({"Contrast" : 16})
-        #picam2.set_controls({"Saturation" : 11})
-        #picam2.set_controls({"Sharpness" : 8})
+        with open(jsonConfig) as f:
+            
+            settings = json.load(f)
+            print(settings, flush=True)
+            for setting, value in settings.items():
+                camera.set_controls({setting:value})
+            #testItem = "AnalogueGain"
+            #min_val, max_val, default_val = picam2.camera_controls[testItem]
+            #print((min_val, max_val, default_val))
+            #camera.set_controls({"NoiseReductionMode" : controls.draft.NoiseReductionModeEnum.Off}) # Noise Reduction Mode set last word to either Off, Fast or HighQuality
+            #camera.set_controls({"AeEnable" : False}) # Auto Exposure enable True or False
+            #camera.set_controls({"LensPosition" : 32}) # Lens Postion values 0 to 32 metadata reports 15 as max??? Values in meters
+            #camera.set_controls({"ExposureTime" : 10000}) # Exposure time values 0 to 220417486 metadata reports inconsistant values ranging from 12000 to 16000 when set to max value??? Values are in microseconds
+            #picam2.set_controls({"AnalogueGain" : 0}) # Analogue Gain values 1 to 16
+            #picam2.set_controls({"DigitalGain" : 0}) # According to docs don't bother messing with digital gain
+            #picam2.set_controls({"ExposureValue" : 0})
+            #picam2.set_controls({"Brightness" : 0})
+            #picam2.set_controls({"Contrast" : 16})
+            #picam2.set_controls({"Saturation" : 11})
+            #picam2.set_controls({"Sharpness" : 8})
 
 dirname = Path(__file__).resolve().parent
 
@@ -68,6 +72,12 @@ parser.add_argument(
     help="Path of the directory where recordings are stored",
 )
 parser.add_argument(
+    "--timer",
+    default=10,
+    type=int,
+    help="Time in seconds between snapshots"
+)
+parser.add_argument(
     "--config",
     type=str,
     help="Path to configuration json for camera properties",
@@ -75,9 +85,6 @@ parser.add_argument(
 args = parser.parse_args()
 
 if __name__ == "__main__":
-    
-    
-    
     picam = Picamera2(int(args.camera))
     config = picam.create_still_configuration()
     picam.configure(config)
@@ -91,4 +98,4 @@ if __name__ == "__main__":
     # TODO UNCOMMENT THIS WHEN FINISHED TESTING
     while True:
         snapshot(picam, args.data_path)
-        time.sleep(10)
+        time.sleep(args.timer)

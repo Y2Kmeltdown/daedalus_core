@@ -1,4 +1,4 @@
-# FROM balenalib/rpi-raspbian:bookworm
+# TODO Set up environment variables in a way that I can automatically add new sensors to  supervisord config purely through environment variables like how mornedhels/enshrouded-server does it
 FROM arm64v8/debian:latest
 
 ENV HOME=/root \
@@ -6,13 +6,14 @@ ENV HOME=/root \
 	LANG=en_US.UTF-8 \
 	LANGUAGE=en_US.UTF-8 \
 	LC_ALL=C.UTF-8 \
-    SERIAL_0=00042412 \
-    #SERIAL_0=00050869 \
+    #SERIAL_0=00042412 \
+    SERIAL_0=00050869 \
     SERIAL_1=00050591 \
     I2C_0=0x69 \
     I2C_1=0x68 \
     SUPERVISORD_PORT=9000 \
-    MJPEG_PORT=8000
+    MJPEG_PORT_0=8000 \
+    MJPEG_PORT_1=8001
 
 # Install base packages
 RUN apt-get update
@@ -33,7 +34,8 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Install Python 3.11 and required packages
 RUN apt-get install -y \
-    tzdata software-properties-common \
+    tzdata \
+    software-properties-common \
     python3-launchpadlib
 
 RUN add-apt-repository 'ppa:deadsnakes/ppa'
@@ -63,10 +65,11 @@ COPY /Code /root/code
 #COPY /Data /root/data
 
 EXPOSE ${SUPERVISORD_PORT}
-EXPOSE ${MJPEG_PORT}
-EXPOSE 8001
+EXPOSE ${MJPEG_PORT_0}
+EXPOSE ${MJPEG_PORT_1}
 
 # Run Scripts via supervisord
+# Change this to a shell script or python script that modifies the supervisord.conf file with the environment variables to add sensor compatability
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
 #CMD ["python3", "/root/code/test.py", "--recordings /root/data/evk4_horizon --route horizon --port 8000 ${SERIAL_0}"]
 

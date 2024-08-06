@@ -6,6 +6,8 @@ import threading
 import queue
 import logging
 import os
+import signal
+
 from aiohttp import web, MultipartWriter
 import neuromorphic_drivers as nd
 
@@ -19,6 +21,17 @@ log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
 logger = logging.getLogger("server")
 log_level = getattr(logging, log_level)
 logger.setLevel(log_level)
+
+
+
+class GracefulKiller:
+    kill_now = False
+    def __init__(self):
+        signal.signal(signal.SIGINT, self.exit_gracefully)
+        signal.signal(signal.SIGTERM, self.exit_gracefully)
+
+    def exit_gracefully(self, signum, frame):
+        self.kill_now = True
 
 class StreamHandler:
 
@@ -107,47 +120,52 @@ class MjpegServer:
         '''
         pass
 
-configuration = nd.prophesee_evk4.Configuration(
-    biases=nd.prophesee_evk4.Biases(
-        diff_off=102,  # default: 102
-        diff_on=73,  # default: 73
+if __name__ == "__main__":
+    configuration = nd.prophesee_evk4.Configuration(
+        biases=nd.prophesee_evk4.Biases(
+            diff_off=102,  # default: 102
+            diff_on=73,  # default: 73
+        )
     )
-)
 
-parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument("serial", help="Camera serial number (for example 00050423)")
-parser.add_argument(
-    "--port",
-    default=8000,
-    type=int,
-    help="Port at which server is available on"
-)
-args = parser.parse_args()
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("serial", help="Camera serial number (for example 00050423)")
+    parser.add_argument(
+        "--port",
+        default=8000,
+        type=int,
+        help="Port at which server is available on"
+    )
+    args = parser.parse_args()
 
-with nd.open(serial=args.serial) as device:
-    cam_width = device.properties().width
-    cam_height = device.properties().height
+    with nd.open(serial=args.serial) as device:
+        cam_width = device.properties().width
+        cam_height = device.properties().height
 
-def getEvents(out_q):
-    with nd.open(serial=args.serial) as device:#configuration=configuration
-        print(f"Successfully started EVK4 {args.serial}")
+    def getEvents(out_q):
+        killer = GracefulKiller()
+        with nd.open(serial=args.serial) as device:#configuration=configuration
+            print(f"Successfully started EVK4 {args.serial}")
 
-        for status, packet in device:
+            for status, packet in device:
 
-            out_q.put(packet)
-            
-eventQueue = queue.LifoQueue()
-eventProcess = threading.Thread(target=getEvents, args=(eventQueue, ))   
-eventProcess.daemon=True  
+                out_q.put(packet)
+                if killer.kill_now:
+                    break
+                
+    eventQueue = queue.LifoQueue()
+    eventProcess = threading.Thread(target=getEvents, args=(eventQueue, ))   
+    eventProcess.daemon=True  
 
-cam = Camera(0, (cam_width, cam_height), eventQueue, camScale=2)
-server = MjpegServer(cam=cam, port=args.port)
+    cam = Camera(0, (cam_width, cam_height), eventQueue, camScale=2)
+    server = MjpegServer(cam=cam, port=args.port)
 
-try:
-    eventProcess.start()
-    server.start()
-except KeyboardInterrupt:
-    logger.warning("Keyboard Interrupt, exiting...")
-finally:
-    server.stop()
-    cam.stop()
+    try:
+        eventProcess.start()
+        server.start()
+    except KeyboardInterrupt:
+        logger.warning("Keyboard Interrupt, exiting...")
+    finally:
+        eventProcess.join()
+        server.stop()
+        cam.stop()
