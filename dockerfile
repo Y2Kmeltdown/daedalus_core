@@ -6,8 +6,8 @@ ENV HOME=/root \
 	LANG=en_US.UTF-8 \
 	LANGUAGE=en_US.UTF-8 \
 	LC_ALL=C.UTF-8 \
-    SERIAL_0=00042412 \
-    #SERIAL_0=00050869 \
+    #SERIAL_0=00042412 \
+    SERIAL_0=00050869 \
     SERIAL_1=00050591 \
     I2C_0=0x69 \
     I2C_1=0x68 \
@@ -34,7 +34,8 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Install Python 3.11 and required packages
 RUN apt-get install -y \
-    tzdata software-properties-common \
+    tzdata \
+    software-properties-common \
     python3-launchpadlib
 
 RUN add-apt-repository 'ppa:deadsnakes/ppa'

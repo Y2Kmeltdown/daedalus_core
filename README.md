@@ -156,6 +156,8 @@ The mjpeg server is used to display event data through a network stream to view 
 
 ### Adding Requirements
 
+### Building the docker image
+
 ## Appendix
 
 ### Installing Bonjour
