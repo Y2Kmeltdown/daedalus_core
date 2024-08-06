@@ -3,9 +3,92 @@
 Daedalus Core is a docker image and set of scripts that handle the collection of data from sensors on a raspberry pi. Daedalus core is designed to be flexible in implementation and simple to modify. It uses supervisord to daemonise python scripts for data collection and monitor their function.
 
 ## Installation
-To get started with daedalus core you will need a raspberry pi (preferable a pi 5 running raspbian lite) with docker installed on it.
-You can then pull the docker image from `y2kmeltdown/daedaluscore` onto a raspberry pi then run the `dockerrun.sh` script for simple installation.
-For specific installation steps you can modify these values of the docker run command.
+
+### Setting up the image
+To get started with daedalus core you will need a raspberry pi preferably a raspberry pi 5 and a suitably sized SD card for your application. Firstly you will need to install raspbian lite. The easiest way is to use the [raspberry pi imager](https://downloads.raspberrypi.org/imager/imager_latest.exe). Make sure you modify the settings to update the hostname to whatever is most memorable and set a simple username and password. Finally you should also go to services and enable ssh using password or public key authentication, this is the easiest way to interact with the raspberry pi once raspbian lite is installed. With all the settings done you can write the image to an SD card.
+
+### Connecting to the Pi
+Plug the SD card into the Raspberry Pi and boot the pi up. To connect to the raspberry pi you have four options:
+#### Direct connection
+Plug in a HDMI cable and a keyboard and mouse and you will be able to access the raspberry pi terminal directly from the hardware. You will still need an internet connection to install docker and the daedalus image.
+#### Ethernet connection
+Connect the Raspberry Pi via ethernet to the same network as your main computer then use SSH either through putty, powershell or git bash. If you are on windows I recommend installing bonjour as it will allow you to connect to the raspberry pi via it's hostname.
+#### Wi-Fi connection
+If you set up wireless LAN before writing the image to the SD card you can SSH into the pi if you are connected to the same network using the same steps as ethernet connection.
+#### Host computer
+Finally the most ideal method is to use your main computer as a host and connect an ethernet cable directly from the raspberry pi to an ethernet port on your main device. See [How to use](#how-to-use) for setting up your computer as a host device.
+
+### Configuring the Pi
+Once you have a method of interacting with the raspberry pi you should set up a few things. First you should enable a few interfaces. Run the command `sudo raspi-config` then navigate to `Interface Options` then enable `SPI`, `I2C`, `Serial Port`, `1-Wire` and `Remote GPIO` then reboot the Raspberry Pi.
+
+Next you will need to update some values in `/boot/firmware/config.txt`.
+Enter the command:
+```bash
+sudo nano /boot/firmware/config.txt
+```
+Find the parameter:
+```bash
+dtparam=i2c_arm=on
+```
+Then change it to:
+```bash
+dtparam=i2c_arm=on,i2c_arm_baudrate=40000
+```
+This will increase the data rate of i2c which is necessary for some i2c devices.
+
+Next navigate to the bottom of `config.txt` and add the line:
+```bash
+usb_max_current_enable=1
+```
+This will increase the current capacity of the usb ports from 600mA to 1.6A which is important for certain devices.
+
+Save the changes made to `/boot/firmware/config.txt` by clicking `ctrl-o` then exit by clicking `ctrl-x`.
+
+The last config change is only necessary for raspberry pi 5's. Type the following:
+```bash
+sudo nano /etc/systemd/logind.conf
+```
+then change the following:
+```bash
+#HandlePowerKey=poweroff
+```
+to the following:
+```bash
+HandlePowerKey=ignore
+```
+This will disable the power button on the pi preventing accidental power downs.
+
+After these changes reboot the pi using `sudo reboot`
+
+### Installing Docker
+Next You can install Docker using the following commands:
+```bash
+# Add Docker's official GPG key:
+sudo apt-get update
+sudo apt-get install ca-certificates curl
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/raspbian/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+
+# Add the repository to Apt sources:
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/raspbian \
+  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt-get update
+
+# Install Docker Packages
+sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+```
+After installing test the install by running:
+```bash
+sudo docker run hello-world
+```
+If it is successful you can install the daedalus core image.
+You can then pull the docker image from `y2kmeltdown/daedaluscore` onto a raspberry pi then run the following command for simple installation.
+```bash
+docker run --privileged -v /run/udev:/run/udev:ro -v /home/daedalus/daedalus_core Data:/root/data -p 9001:9001 -p 8000:8000 -p 8001:8001 --restart always daedaluscore:latest
+```
 
 ### Environment Variables
 | Environment Variable | Default | Description |
@@ -32,12 +115,6 @@ Port mapping differs depending on configuration but generally port `9000` is use
 To operate properly the dokcer container must be run in privileged mode. This ensures that all interfaces are exposed to the container such as i2c, CSI, USB and SPI. ensure the `--privileged` tag is used when running the container.
 
 To ensure that the container stays active in the event a script causes the container to crash the restart tag should be used and the setting always should be used e.g. `--restart always`.
-
-The final docker run command should look something like this
-
-```bash
-docker run --privileged -v /run/udev:/run/udev:ro -v /home/daedalus/daedalus_core Data:/root/data -p 9001:9001 -p 8000:8000 -p 8001:8001 --restart always daedaluscore:latest
-```
 
 ## Installation Alternative
 **NOT IMPLEMENTED YET**
@@ -84,3 +161,8 @@ The mjpeg server is used to display event data through a network stream to view 
 [camera config](https://datasheets.raspberrypi.com/camera/picamera2-manual.pdf)
 
 ### Adding Requirements
+
+## Appendix
+
+### Installing Bonjour
+Unfortunately Apple doesn't make it easy to install bonjour on windows as a standalone program. The easiest way to install it is to install [iTunes](https://secure-appldnld.apple.com/itunes12/001-80053-20210422-E8A3B28C-A3B2-11EB-BE07-CE1B67FC6302/iTunes64Setup.exe) which will include bonjour along side it. You can uninstall itunes and the other applications installed with it and it will leave bonjour installed.
