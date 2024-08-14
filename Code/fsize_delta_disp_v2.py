@@ -149,6 +149,7 @@ if __name__ == '__main__':
     # Initialise display
     print("Daedalus OLED Display\n")
     myOLED = qwiic_oled_display.QwiicOledDisplay()
+    sleep(1)
     myOLED.begin()
     run_display("Daedalus OLED Displayinitialising...", myOLED)
     
