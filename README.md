@@ -85,6 +85,15 @@ After installation, test the install by running:
 ```bash
 sudo docker run hello-world
 ```
+To run docker as non root user use the following commands to add a docker group:
+```
+sudo groupadd docker
+```
+Then add your current user to the group:
+```
+sudo usermod -aG docker $USER
+```
+Reboot and you should be able to run docker without the sudo command.
 If it is successful you can install the daedalus core image.
 You can then pull the docker image from `y2kmeltdown/daedaluscore` onto a raspberry pi using the command:
 ```bash
@@ -96,7 +105,7 @@ sudo mkdir data
 ```
 Now you can run the following command for simple installation.
 ```bash
-docker run --privileged -v /run/udev:/run/udev:ro -v /home/daedalus/daedalus_core data:/root/data -p 9001:9001 -p 8000:8000 -p 8001:8001 --restart always daedaluscore:latest
+docker run --privileged -v /run/udev:/run/udev:ro -v /home/daedalus/data:/root/data -p 9000:9000 -p 8000:8000 -p 8001:8001 --restart always y2kmeltdown/daedaluscore:latest
 ```
 ## Installation Alternative
 **NOT IMPLEMENTED YET**
