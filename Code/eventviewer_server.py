@@ -6,7 +6,7 @@ import threading
 import queue
 import logging
 import os
-import signal
+# import signal
 
 from aiohttp import web, MultipartWriter
 import neuromorphic_drivers as nd
@@ -24,14 +24,14 @@ logger.setLevel(log_level)
 
 
 
-class GracefulKiller:
-    kill_now = False
-    def __init__(self):
-        signal.signal(signal.SIGINT, self.exit_gracefully)
-        signal.signal(signal.SIGTERM, self.exit_gracefully)
+# class GracefulKiller:
+#     kill_now = False
+#     def __init__(self):
+#         signal.signal(signal.SIGINT, self.exit_gracefully)
+#         signal.signal(signal.SIGTERM, self.exit_gracefully)
 
-    def exit_gracefully(self, signum, frame):
-        self.kill_now = True
+#     def exit_gracefully(self, signum, frame):
+#         self.kill_now = True
 
 class StreamHandler:
 
@@ -143,15 +143,15 @@ if __name__ == "__main__":
         cam_height = device.properties().height
 
     def getEvents(out_q):
-        killer = GracefulKiller()
+        # killer = GracefulKiller()
         with nd.open(serial=args.serial) as device:#configuration=configuration
             print(f"Successfully started EVK4 {args.serial}")
 
             for status, packet in device:
 
                 out_q.put(packet)
-                if killer.kill_now:
-                    break
+                # if killer.kill_now:
+                #     break
                 
     eventQueue = queue.LifoQueue()
     eventProcess = threading.Thread(target=getEvents, args=(eventQueue, ))   

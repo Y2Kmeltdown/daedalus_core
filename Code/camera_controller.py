@@ -85,6 +85,7 @@ parser.add_argument(
 args = parser.parse_args()
 
 if __name__ == "__main__":
+    Path(args.data_path).mkdir(parents=True, exist_ok=True)
     picam = Picamera2(int(args.camera))
     config = picam.create_still_configuration()
     picam.configure(config)
