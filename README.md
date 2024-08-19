@@ -78,7 +78,7 @@ Daedalus Core is mostly designed to be a set and forget system once it is powere
 
 ### Accessing supervisord
 
-Once you connect to the daedalus access point you can view the supervisor webpage by navigating to `daedalus.local:9000` or if you cannot resolve the hostname `192.168.4.1:9000`
+Once you connect to the daedalus access point you can view the supervisor webpage by navigating to `daedalus.local` or if you cannot resolve the hostname `192.168.4.1`
 
 On the supervisord webpage you will see all sensor processes running or failing. Clicking on the processes will bring up logs which will display whatever information is being logged but most importantly if the process is failing it displays the error information.
 
