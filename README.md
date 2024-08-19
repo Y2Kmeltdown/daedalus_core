@@ -92,17 +92,21 @@ Daedalus utilises supervisor to act as a daemonizer for all of your sensors. Whe
 
 ## Modifying Daedalus Core
 
-### Adding sensors
+To modify the function of supervisord you can edit the supervisord.conf file 
+```bash
+sudo nano /etc/supervisor/conf.d/supervisord.conf
+```
 
-### Adding access rules
+To modify the sensor files you can access them in the directory
+```
+cd /home/daedalus/code
+```
 
-### Modifying configuration
+To add new sensors you will need to install all requirements for the new sensor, add the new sensor file to the code directory then add the new service in supervisord.conf to run the sensor as a daemon.
+
+After any changes made to the system ensure they changes are saved then reboot and test.
 
 [camera config](https://datasheets.raspberrypi.com/camera/picamera2-manual.pdf)
-
-### Adding Requirements
-
-### Building the docker image
 
 ## Appendix
 
