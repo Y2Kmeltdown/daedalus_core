@@ -1,9 +1,0 @@
-1. Change how docker container reads python scripts such that it can adaptively add python scripts to supervisord at launch through environment variables
-
-    Something like SENSOR_X_NAME="sensor name", SENSOR_X_COMMAND="python command", SENSOR_X_CONFIG="path/to/config", SENSOR_X_REQUIREMENTS="path/to/requirements.txt"
-
-    Then have a bash or python script to read environment variables and search for keyword SENSOR and group by number then generate the block for supervisord, install requirements from SENSOR_X_REQUIREMENTS, add to html for viewing data, then finally make a call to run supervisord
-
-2. Add an access point server to raspberry pi such that a user can connect to the raspberry pi wirelessly and view the running websites and processes
-
-3. Make a nice main webpage which could view data coming from all connected sensors
