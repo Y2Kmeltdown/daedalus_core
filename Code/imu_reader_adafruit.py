@@ -20,6 +20,7 @@ ADDRESS_1 = 0x69
 ADDRESS_2 = 0x68
 
 def readIMU(i2c_address, dir_path):
+	counter = 0
 	
 	i2c = board.I2C()  # uses board.SCL and board.SDA
 
@@ -42,7 +43,7 @@ def readIMU(i2c_address, dir_path):
 		writer.writeheader()
 			
 		while True:
-			print("Writing data...")
+			# print("Writing data...")
 			
 			# Update and write data from first IMU
 			accel = icm.acceleration
@@ -60,7 +61,11 @@ def readIMU(i2c_address, dir_path):
 			'my': mag[1],
 			'mz': mag[2]}
 			
-			writer.writerow(IMU_data) 
+			writer.writerow(IMU_data)
+			counter+=1
+			if counter == 100:
+				print(IMU_data, flush=True) 
+				counter = 0
 		
 			time.sleep(0.01)
 

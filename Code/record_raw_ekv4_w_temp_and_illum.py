@@ -77,10 +77,16 @@ with nd.open(raw=True, serial=args.serial) as device:#configuration=configuratio
         output_directory / f"{name}_measurements.jsonl",
         "wb",
     ) as measurements:
+        counter = 0
         start_time = time.monotonic_ns()
         next_flush = start_time + flush_interval
         next_measurement = start_time
         for status, packet in device:
+            counter += 1
+            if counter == 100:
+                print(f"Saving Event Data, Packet Size:{len(packet)}", flush=True) 
+                counter = 0
+                   
             events.write(packet)
             events_cursor += len(packet)
             try:

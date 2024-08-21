@@ -27,6 +27,7 @@ def run_display(display_string, myOLED):
     # ~ myOLED.clear(myOLED.ALL)
     myOLED.clear(myOLED.PAGE)  #  Clear the display's buffer
     myOLED.print(display_string)
+    print(display_string, flush=True)
     myOLED.display()
 
 # Function to get the folder size of a single folder

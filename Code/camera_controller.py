@@ -3,7 +3,6 @@ import datetime
 import json
 import argparse
 from pathlib import Path
-import logging
 
 from picamera2 import Picamera2
 from libcamera import controls
@@ -35,6 +34,7 @@ def snapshot(camera:Picamera2, data_path:str):
     with open(f'{data_path}/cam_{camera.camera_idx}_metadata_{timestr}.json', 'w') as f:
         f.write(json.dumps([imgMetadata2, imgMetadata]))
     request.save('main', f'{data_path}/cam_{camera.camera_idx}_image_{timestr}.png')
+    print(f'snapshot saved to {data_path}/cam_{camera.camera_idx}_image_{timestr}.png', flush=True)
     request.release()
 
 def cameraControls(camera:Picamera2, jsonConfig:str):
