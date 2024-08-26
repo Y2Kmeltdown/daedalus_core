@@ -31,7 +31,9 @@ apt-get install -y \
     bash \
     tzdata \
     software-properties-common \
-    python3-launchpadlib
+    python3-launchpadlib \
+    python3.11 \
+    python3-pip
 
 
 apt install -y python3-picamera2 --no-install-recommends
