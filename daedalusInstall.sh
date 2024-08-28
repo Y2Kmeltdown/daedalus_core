@@ -17,7 +17,7 @@ sudo echo "RebootWatchdogSec=2min" >> /etc/systemd/system.conf
 
 mkdir $1
 export DAEDALUS_DATA=$1
-echo "export DAEDALUS_DATA=$1" >> /home/$SUDO_USER/.bashrc
+echo "export DAEDALUS_DATA=$1" >> ~/.bashrc
 
 
 cp -a Code /usr/local/code
@@ -43,8 +43,8 @@ curl https://sh.rustup.rs -sSf | bash -s -- -y
 
 export PATH="$HOME/.cargo/bin:${PATH}"
 
-sudo echo "export PATH=$HOME/.cargo/bin:${PATH}" >> /home/$SUDO_USER/.bashrc
-source /home/$SUDO_USER/.bashrc
+sudo echo "export PATH=$HOME/.cargo/bin:${PATH}" >> ~/.bashrc
+source ~/.bashrc
 
 pip install --break-system-packages -r /usr/local/config/requirements.txt
 
