@@ -17,7 +17,7 @@ sudo echo "RebootWatchdogSec=2min" >> /etc/systemd/system.conf
 
 mkdir $1
 export DAEDALUS_DATA=$1
-echo "export DAEDALUS_DATA=$1" >> ~/.bashrc
+echo "export DAEDALUS_DATA=$1" >> /etc/profile
 
 cp -a Code /usr/local/code
 cp -a Config /usr/local/config
@@ -42,9 +42,9 @@ sudo apt install -y python3-picamera2 --no-install-recommends
 
 curl https://sh.rustup.rs -sSf | bash -s -- -y
 
-export PATH="$HOME/.cargo/bin:${PATH}"
+export PATH="~/.cargo/bin:${PATH}"
 
-echo "export PATH=$HOME/.cargo/bin:${PATH}" >> ~/.bashrc
+echo "export PATH=~/.cargo/bin:${PATH}" >> ~/.bashrc
 
 pip install --break-system-packages -r /usr/local/config/requirements.txt
 
