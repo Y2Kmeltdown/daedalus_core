@@ -43,7 +43,6 @@ curl https://sh.rustup.rs -sSf | bash -s -- -y
 
 export PATH="$HOME/.cargo/bin:${PATH}"
 echo "export PATH=$HOME/.cargo/bin:${PATH}" >> ~/.bashrc
-source ~/.bashrc
 
 pip install --break-system-packages -r /usr/local/config/requirements.txt
 
