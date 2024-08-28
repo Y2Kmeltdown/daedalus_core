@@ -15,9 +15,9 @@ sudo sed -i 's/#HandlePowerKey=poweroff/HandlePowerKey=ignore/g' /etc/systemd/lo
 sudo echo "RuntimeWatchdogSec=15" >> /etc/systemd/system.conf
 sudo echo "RebootWatchdogSec=2min" >> /etc/systemd/system.conf
 
-su $SUDO_USER -c 'mkdir $1'
-su $SUDO_USER -c 'export DAEDALUS_DATA=$1'
-su $SUDO_USER -c 'echo "export DAEDALUS_DATA=$1" >> ~/.bashrc'
+mkdir $1
+export DAEDALUS_DATA=$1
+echo "export DAEDALUS_DATA=$1" >> ~/.bashrc
 
 
 sudo cp -a Code /usr/local/code
@@ -39,16 +39,18 @@ sudo apt-get install -y \
 
 sudo apt install -y python3-picamera2 --no-install-recommends
 
-su $SUDO_USER -c 'curl https://sh.rustup.rs -sSf | bash -s -- -y'
+curl https://sh.rustup.rs -sSf | bash -s -- -y
 
-su $SUDO_USER -c 'export PATH="$HOME/.cargo/bin:${PATH}"'
-su $SUDO_USER -c 'echo "export PATH=$HOME/.cargo/bin:${PATH}" >> ~/.bashrc'
-su $SUDO_USER -c 'source ~/.bashrc'
+export PATH="$HOME/.cargo/bin:${PATH}"
+echo "export PATH=$HOME/.cargo/bin:${PATH}" >> ~/.bashrc
+source ~/.bashrc
 
-su $SUDO_USER -c 'pip install --break-system-packages -r /usr/local/config/requirements.txt'
+pip install --break-system-packages -r /usr/local/config/requirements.txt
 
 sudo cp /usr/local/config/65-neuromorphic-drivers.rules /etc/udev/rules.d/65-neuromorphic-drivers.rules
 sudo cp /usr/local/config/99-camera.rules /etc/udev/rules.d/99-camera.rules
 sudo cp /usr/local/config/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 sudo systemctl daemon-reload
+
+sudo /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf
