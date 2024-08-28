@@ -41,9 +41,9 @@ sudo apt install -y python3-picamera2 --no-install-recommends
 
 curl https://sh.rustup.rs -sSf | bash -s -- -y
 
-export PATH="/home/$SUDO_USER/.cargo/bin:${PATH}"
+export PATH="$HOME/.cargo/bin:${PATH}"
 
-sudo echo "export PATH=/home/$SUDO_USER/.cargo/bin:${PATH}" >> /home/$SUDO_USER/.bashrc
+sudo echo "export PATH=$HOME/.cargo/bin:${PATH}" >> /home/$SUDO_USER/.bashrc
 source /home/$SUDO_USER/.bashrc
 
 pip install --break-system-packages -r /usr/local/config/requirements.txt
