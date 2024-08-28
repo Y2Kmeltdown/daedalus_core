@@ -16,15 +16,12 @@ sudo echo "RuntimeWatchdogSec=15" >> /etc/systemd/system.conf
 sudo echo "RebootWatchdogSec=2min" >> /etc/systemd/system.conf
 
 mkdir $1
-export DAEDALUS_DATA=$1
-echo "export DAEDALUS_DATA=$1" >> /etc/profile
+echo "export DAEDALUS_DATA=$1" >> ~/.bashrc
 
 cp -a Code /usr/local/code
 cp -a Config /usr/local/config
 
 sudo apt-get update
-
-sudo add-apt-repository 'ppa:deadsnakes/ppa'
 
 sudo apt-get install -y \
     build-essential \
@@ -42,9 +39,10 @@ sudo apt install -y python3-picamera2 --no-install-recommends
 
 curl https://sh.rustup.rs -sSf | bash -s -- -y
 
-export PATH="~/.cargo/bin:${PATH}"
+export PATH="$HOME/.cargo/bin:${PATH}"
 
-echo "export PATH=~/.cargo/bin:${PATH}" >> ~/.bashrc
+sudo echo "export PATH=~/.cargo/bin:${PATH}" >> ~/.bashrc
+source ~/.bashrc
 
 pip install --break-system-packages -r /usr/local/config/requirements.txt
 
