@@ -24,54 +24,24 @@ If you set up wireless LAN before writing the image to the SD card you can SSH i
 Finally the most ideal method is to use your main computer as a host and connect an ethernet cable directly from the raspberry pi to an ethernet port on your main device. See [Using Windows as a host device](#using-windows-as-a-host-device) for setting up your computer as a host device.
 
 ### Configuring the Pi
-Once you have a method of interacting with the raspberry pi you should set up a few things. First you should enable a few interfaces. Run the command `sudo raspi-config` then navigate to `Interface Options` then enable `SPI`, `I2C`, `Serial Port`, `1-Wire` and `Remote GPIO` then reboot the Raspberry Pi.
+Once you have a method of interacting with the raspberry pi you should set up a few things. 
 
-Next you will need to update some values in `/boot/firmware/config.txt`.
-Enter the command:
+First you should run the following command:
 ```bash
-sudo nano /boot/firmware/config.txt
+sudo apt-get update
 ```
-Find the parameter:
+Follwed by installing git:
 ```bash
-dtparam=i2c_arm=on
+sudo apt install git
 ```
-Then change it to:
+With git installed you can clone the repository and then run the install script using the following commands:
 ```bash
-dtparam=i2c_arm=on,i2c_arm_baudrate=40000
+git clone https://github.com/Y2Kmeltdown/daedalus_core.git
+cd daedalus_core
+sudo bash daedalusInstall.sh </path/to/data>
 ```
-This will increase the data rate of i2c which is necessary for some i2c devices.
+The script sets all of the required raspberry pi configuration and moves the code and config into a permanent location. The data is stored in the specified location of the install script.
 
-Next navigate to the bottom of `config.txt` and add the line:
-```bash
-usb_max_current_enable=1
-```
-This will increase the current capacity of the usb ports from 600mA to 1.6A which is important for certain devices.
-
-Save the changes made to `/boot/firmware/config.txt` by clicking `ctrl-o` then exit by clicking `ctrl-x`.
-
-The last config change is only necessary for raspberry pi 5's. Type the following:
-```bash
-sudo nano /etc/systemd/logind.conf
-```
-then change the following:
-```bash
-#HandlePowerKey=poweroff
-```
-to the following:
-```bash
-HandlePowerKey=ignore
-```
-This will disable the power button on the pi preventing accidental power downs.
-Save the changes by clicking `ctrl-o` then exit by clicking `ctrl-x`
-
-After these changes reboot the pi using `sudo reboot`
-
-Also you will need to make a directory in your home path called data
-```bash
-sudo mkdir data
-```
-
-[WIP] add steps automated by docker here potentially put it all in a shell script.
 ## How to use
 
 Daedalus Core is mostly designed to be a set and forget system once it is powered on and running it should start immediately collecting data but there are some methods of controlling the processes running on the raspberry pi. Daedalus core can be connected to via wifi. On boot, daedalus will load an access point named DAEDALUS which you can connect to to monitor it's function.

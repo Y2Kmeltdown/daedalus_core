@@ -15,9 +15,12 @@ sudo sed -i 's/#HandlePowerKey=poweroff/HandlePowerKey=ignore/g' /etc/systemd/lo
 sudo echo "RuntimeWatchdogSec=15" >> /etc/systemd/system.conf
 sudo echo "RebootWatchdogSec=2min" >> /etc/systemd/system.conf
 
-mkdir $HOME/data
-cp -a Code $HOME/code
-cp -a Config $HOME/config
+mkdir $1
+export DAEDALUS_DATA=$1
+echo "export DAEDALUS_DATA=$1" >> ~/.bashrc
+
+cp -a Code /usr/local/code
+cp -a Config /usr/local/config
 
 sudo apt-get update
 
@@ -43,10 +46,10 @@ export PATH="$HOME/.cargo/bin:${PATH}"
 
 echo "export PATH=$HOME/.cargo/bin:${PATH}" >> ~/.bashrc
 
-pip install --break-system-packages -r $HOME/config/requirements.txt
+pip install --break-system-packages -r /usr/local/config/requirements.txt
 
-cp $HOME/config/65-neuromorphic-drivers.rules /etc/udev/rules.d/65-neuromorphic-drivers.rules
-cp $HOME/config/99-camera.rules /etc/udev/rules.d/99-camera.rules
-cp $HOME/config/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+sudo cp /usr/local/config/65-neuromorphic-drivers.rules /etc/udev/rules.d/65-neuromorphic-drivers.rules
+sudo cp /usr/local/config/99-camera.rules /etc/udev/rules.d/99-camera.rules
+sudo cp /usr/local/config/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 sudo systemctl daemon-reload
