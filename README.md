@@ -34,11 +34,14 @@ Follwed by installing git:
 ```bash
 sudo apt install git
 ```
-With git installed you can clone the repository and then run the install script using the following commands:
+With git installed you can clone the repository:
 ```bash
 git clone https://github.com/Y2Kmeltdown/daedalus_core.git
+```
+Then navigate to the daedalus core folder and run daedalusInstall.sh with your preferred location for data. It is important to specify the full data path, for example `/home/<USERNAME>/data` as the script has to be run as root to allow configuration of certain files on the raspberry pi.
+```bash
 cd daedalus_core
-. daedalusInstall.sh </path/to/data>
+sudo bash daedalusInstall.sh </path/to/data>
 ```
 The script sets all of the required raspberry pi configuration and moves the code and config into a permanent location. The data is stored in the specified location of the install script.
 

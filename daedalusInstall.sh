@@ -28,16 +28,9 @@ sudo cp -a Config /usr/local/config
 sudo apt-get update
 
 sudo apt-get install -y \
-    build-essential \
-    curl \
-    supervisor \
-    bash \
-    tzdata \
-    software-properties-common \
-    python3-launchpadlib \
     python3.11 \
-    python3-pip
-
+    python3-pip \
+    supervisor
 
 sudo apt install -y python3-picamera2 --no-install-recommends
 
