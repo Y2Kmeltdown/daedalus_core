@@ -18,6 +18,8 @@ sudo echo "RebootWatchdogSec=2min" >> /etc/systemd/system.conf
 mkdir $1
 export DAEDALUS_DATA=$1
 echo "export DAEDALUS_DATA=$1" >> ~/.bashrc
+echo "export DAEDALUS_DATA=$1" >> /home/$SUDO_USER/.bashrc
+source /home/$SUDO_USER/.bashrc
 
 
 sudo cp -a Code /usr/local/code
@@ -52,4 +54,4 @@ sudo cp /usr/local/config/supervisord.conf /etc/supervisor/conf.d/supervisord.co
 
 sudo systemctl daemon-reload
 
-sudo /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf
+/usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf
