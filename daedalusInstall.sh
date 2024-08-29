@@ -29,8 +29,7 @@ sudo apt-get update
 
 sudo apt-get install -y \
     python3.11 \
-    python3-pip \
-    supervisor
+    python3-pip
 
 sudo apt install -y python3-picamera2 --no-install-recommends
 
@@ -43,10 +42,12 @@ pip install --break-system-packages -r /usr/local/config/requirements.txt
 
 sudo cp /usr/local/config/65-neuromorphic-drivers.rules /etc/udev/rules.d/65-neuromorphic-drivers.rules
 sudo cp /usr/local/config/99-camera.rules /etc/udev/rules.d/99-camera.rules
-sudo cp /usr/local/config/supervisord.conf /etc/supervisor/supervisord.conf
+sudo cp /usr/local/config/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
+sudo apt-get install -y \
+    supervisor
 
-su $SUDO_USER -c '/usr/bin/supervisord -c /etc/supervisor/supervisord.conf'
+#su $SUDO_USER -c '/usr/bin/supervisord -c /etc/supervisor/supervisord.conf'
 
 
 
