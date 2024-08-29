@@ -42,6 +42,8 @@ pip install --break-system-packages -r /usr/local/config/requirements.txt
 
 sudo cp /usr/local/config/65-neuromorphic-drivers.rules /etc/udev/rules.d/65-neuromorphic-drivers.rules
 sudo cp /usr/local/config/99-camera.rules /etc/udev/rules.d/99-camera.rules
+
+sudo mkdir /etc/supervisor/conf.d
 sudo cp /usr/local/config/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 sudo apt-get install -y \
