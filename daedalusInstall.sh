@@ -15,7 +15,7 @@ sudo sed -i 's/#HandlePowerKey=poweroff/HandlePowerKey=ignore/g' /etc/systemd/lo
 sudo echo "RuntimeWatchdogSec=15" >> /etc/systemd/system.conf
 sudo echo "RebootWatchdogSec=2min" >> /etc/systemd/system.conf
 
-if [ -z "${1}" ];
+if [ -z "${1}" ]; then
     DAEDALUS_DIR = /home/daedalus/data
 else
     DAEDALUS_DIR = $1
