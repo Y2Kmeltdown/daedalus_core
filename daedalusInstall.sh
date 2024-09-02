@@ -55,7 +55,7 @@ sudo apt-get install -y \
     supervisor
 
 
-sudo sed -e '/[service]/a\' -e "Environment="DAEDALUS_DATA=$DAEDALUS_DIR"" /lib/systemd/system/supervisor.service
+sudo sed -i -e '/[service]/a\' -e "Environment="DAEDALUS_DATA=$DAEDALUS_DIR"" /lib/systemd/system/supervisor.service
 
 echo -e "Daedalus Core Installed successfully to view running processes visit http://daedalus.local or enter the command supervisorctl status\nReconfiguring eth0 to host device and rebooting.\nPlease Wait."
 sleep 10
