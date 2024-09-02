@@ -50,7 +50,7 @@ sudo apt-get install -y \
     supervisor
 
 
-sudo sed "/[service]]/a Environment="DAEDALUS_DATA=$1"" /lib/systemd/system/supervisor.service
+sudo sed "/[service]/a Environment="DAEDALUS_DATA=$1"" /lib/systemd/system/supervisor.service
 echo 'Daedalus Core Installed successfully to view running processes visit http://daedalus.local or enter the command supervisorctl status\nReconfiguring eth0 to host device and rebooting.\nPlease Wait.'
 sleep 10
 # nmcli con delete DAEDALUS_ETH
