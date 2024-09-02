@@ -26,7 +26,7 @@ echo "export DAEDALUS_DATA=$DAEDALUS_DIR" >> /root/.bashrc
 echo "export DAEDALUS_DATA=$DAEDALUS_DIR" >> /home/$SUDO_USER/.bashrc
 source /home/$SUDO_USER/.bashrc
 
-
+sudo mkdir -p /usr/local/daedalus
 sudo cp -a Code /usr/local/daedalus/code
 sudo cp -a Config /usr/local/daedalus/config
 
