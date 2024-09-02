@@ -7,7 +7,7 @@ You can use a raspberry pi image preloaded with the required configuration if yo
 
 **IMPORTANT NOTE:** The image is designed for raspberry pi 5 and may not be compatible with raspberry pi 4s.
 
-## Manual Installation(Not Currently Supported)
+## Manual Installation
 
 ### Setting up the image
 To get started with daedalus core you will need a raspberry pi preferably a raspberry pi 5 and a suitably sized SD card for your application. Firstly you will need to install raspbian lite. The easiest way is to use the [raspberry pi imager](https://downloads.raspberrypi.org/imager/imager_latest.exe). Make sure you modify the settings to update the hostname to whatever is most memorable and set a simple username and password. Finally you should also go to services and enable ssh using password or public key authentication, this is the easiest way to interact with the raspberry pi once raspbian lite is installed. With all the settings done you can write the image to an SD card.
@@ -43,7 +43,9 @@ Then navigate to the daedalus core folder and run daedalusInstall.sh with your p
 cd daedalus_core
 sudo bash daedalusInstall.sh </path/to/data>
 ```
-The script sets all of the required raspberry pi configuration and moves the code and config into a permanent location. The data is stored in the specified location of the install script.
+The script sets all of the required raspberry pi configuration, moves the code and config into a permanent location, installs and starts supervisor, sets up the ethernet network as a host device then finally reboots to allow some changes to take affect. The data is stored in the specified location of the install script.
+
+After rebooting, daedalus core should start acting as a host device making it easy to connect via ethernet while in remote locations and the status of sensors should be available at `daedalus.local`
 
 ## How to use
 
