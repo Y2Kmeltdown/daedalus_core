@@ -1,4 +1,5 @@
 {
     "LensPosition": 0,
-    "AnalogueGain": 8
+    "AnalogueGain": 8,
+    "FrameRate": 30
 }
