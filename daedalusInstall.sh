@@ -21,14 +21,12 @@ else
     DAEDALUS_DIR=$1
 fi
 mkdir $DAEDALUS_DIR
-export DAEDALUS_DATA=$DAEDALUS_DIR
-echo "export DAEDALUS_DATA=$DAEDALUS_DIR" >> /root/.bashrc
-echo "export DAEDALUS_DATA=$DAEDALUS_DIR" >> /home/$SUDO_USER/.bashrc
-source /home/$SUDO_USER/.bashrc
 
 sudo mkdir -p /usr/local/daedalus
 sudo cp -a Code /usr/local/daedalus/code
 sudo cp -a Config /usr/local/daedalus/config
+
+sudo sed -i "s/SED_PLACEHOLDER/$DAEDALUS_DIR/g" /usr/local/daedalus/config/supervisord.conf
 
 sudo apt-get update
 
@@ -54,8 +52,6 @@ sudo cp /usr/local/daedalus/config/supervisord.conf /etc/supervisor/conf.d/super
 sudo apt-get install -y \
     supervisor
 
-
-sudo sed -i -e '/[service]]/a\' -e "Environment="DAEDALUS_DATA=$DAEDALUS_DIR"" /lib/systemd/system/supervisor.service
 
 echo -e "Daedalus Core Installed successfully to view running processes visit http://daedalus.local or enter the command supervisorctl status\nReconfiguring eth0 to host device and rebooting.\nPlease Wait."
 sleep 10
