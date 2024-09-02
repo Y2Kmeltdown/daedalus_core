@@ -26,19 +26,17 @@ Finally the most ideal method is to use your main computer as a host and connect
 ### Configuring the Pi
 Once you have a method of interacting with the raspberry pi you should set up a few things. 
 
-First you should run the following command:
+First you should run the following commands to ensure the repositories are up to date and git is installed:
 ```bash
-sudo apt-get update
-```
-Follwed by installing git:
-```bash
-sudo apt install git
+sudo apt-get update && sudo apt install git
 ```
 With git installed you can clone the repository:
 ```bash
 git clone https://github.com/Y2Kmeltdown/daedalus_core.git
 ```
-Then navigate to the daedalus core folder and run daedalusInstall.sh with your preferred location for data. It is important to specify the full data path, for example `/home/<USERNAME>/data` as the script has to be run as root to allow configuration of certain files on the raspberry pi.
+Then navigate to the daedalus core folder and run daedalusInstall.sh with your preferred location for data. It is important to specify the full data path, for example `/home/<USERNAME>/data` as the script has to be run as root to allow configuration of certain files on the raspberry pi. 
+
+**IMPORTANT NOTE:** If you do not set a directory it will default to `/usr/local/daedalus/data`
 ```bash
 cd daedalus_core
 sudo bash daedalusInstall.sh </path/to/data>
