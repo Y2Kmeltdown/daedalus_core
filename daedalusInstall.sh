@@ -15,15 +15,20 @@ sudo sed -i 's/#HandlePowerKey=poweroff/HandlePowerKey=ignore/g' /etc/systemd/lo
 sudo echo "RuntimeWatchdogSec=15" >> /etc/systemd/system.conf
 sudo echo "RebootWatchdogSec=2min" >> /etc/systemd/system.conf
 
-mkdir $1
-export DAEDALUS_DATA=$1
-echo "export DAEDALUS_DATA=$1" >> /root/.bashrc
-echo "export DAEDALUS_DATA=$1" >> /home/$SUDO_USER/.bashrc
+if [ -z "${1}" ];
+    DAEDALUS_DIR = /home/daedalus/data
+else
+    DAEDALUS_DIR = $1
+fi
+mkdir $DAEDALUS_DIR
+export DAEDALUS_DATA=$DAEDALUS_DIR
+echo "export DAEDALUS_DATA=$DAEDALUS_DIR" >> /root/.bashrc
+echo "export DAEDALUS_DATA=$DAEDALUS_DIR" >> /home/$SUDO_USER/.bashrc
 source /home/$SUDO_USER/.bashrc
 
 
-sudo cp -a Code /usr/local/code
-sudo cp -a Config /usr/local/config
+sudo cp -a Code /usr/local/daedalus/code
+sudo cp -a Config /usr/local/daedalus/config
 
 sudo apt-get update
 
@@ -38,20 +43,21 @@ curl https://sh.rustup.rs -sSf | bash -s -- -y
 export PATH="$HOME/.cargo/bin:${PATH}"
 echo "export PATH=$HOME/.cargo/bin:${PATH}" >> ~/.bashrc
 
-pip install --break-system-packages -r /usr/local/config/requirements.txt
+pip install --break-system-packages -r /usr/local/daedalus/config/requirements.txt
 
-sudo cp /usr/local/config/65-neuromorphic-drivers.rules /etc/udev/rules.d/65-neuromorphic-drivers.rules
-sudo cp /usr/local/config/99-camera.rules /etc/udev/rules.d/99-camera.rules
+sudo cp /usr/local/daedalus/config/65-neuromorphic-drivers.rules /etc/udev/rules.d/65-neuromorphic-drivers.rules
+sudo cp /usr/local/daedalus/config/99-camera.rules /etc/udev/rules.d/99-camera.rules
 
 sudo mkdir -p /etc/supervisor/conf.d
-sudo cp /usr/local/config/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+sudo cp /usr/local/daedalus/config/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 sudo apt-get install -y \
     supervisor
 
 
-sudo sed "/[service]/a Environment="DAEDALUS_DATA=$1"" /lib/systemd/system/supervisor.service
-echo 'Daedalus Core Installed successfully to view running processes visit http://daedalus.local or enter the command supervisorctl status\nReconfiguring eth0 to host device and rebooting.\nPlease Wait.'
+sudo sed -e '/[service]/a\' -e "Environment="DAEDALUS_DATA=$DAEDALUS_DIR"" /lib/systemd/system/supervisor.service
+
+echo -e "Daedalus Core Installed successfully to view running processes visit http://daedalus.local or enter the command supervisorctl status\nReconfiguring eth0 to host device and rebooting.\nPlease Wait."
 sleep 10
 # nmcli con delete DAEDALUS_ETH
 # nmcli con add type ethernet ifname eth0 con-name DAEDALUS_ETH
