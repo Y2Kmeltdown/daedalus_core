@@ -26,7 +26,7 @@ sudo mkdir -p /usr/local/daedalus
 sudo cp -a Code /usr/local/daedalus/code
 sudo cp -a Config /usr/local/daedalus/config
 
-sudo sed -i "s/SEDPLACEHOLDER/$DAEDALUS_DIR/g" /usr/local/daedalus/config/supervisord.conf
+sudo sed -i "s@SEDPLACEHOLDER@$DAEDALUS_DIR@g" /usr/local/daedalus/config/supervisord.conf
 
 sudo apt-get update
 
