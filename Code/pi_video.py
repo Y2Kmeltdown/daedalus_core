@@ -62,7 +62,7 @@ def cameraControls(camera:Picamera2, jsonConfig:str):
 if __name__ == "__main__":
     Path(args.data_path).mkdir(parents=True, exist_ok=True)
 
-    picam = Picamera2()
+    picam = Picamera2(int(args.camera))
     # config = picam.create_video_configuration(controls={"FrameDurationLimits": (40000, 100000)})
     picam.configure("video")
     # picam.pre_callback = record_timestamp
