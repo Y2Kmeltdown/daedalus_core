@@ -28,7 +28,7 @@ Once you have a method of interacting with the raspberry pi you should set up a 
 
 First you should run the following commands to ensure the repositories are up to date and git is installed:
 ```bash
-sudo apt-get update && sudo apt install git
+sudo apt-get update && sudo apt install git -y
 ```
 With git installed you can clone the repository:
 ```bash
