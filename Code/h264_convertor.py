@@ -49,8 +49,7 @@ if __name__ == "__main__":
     parser.add_argument(
         '--output',
         type=str,
-        default="output.mp4",
-        help="The name of the output MP4 file."
+        help="The desired path and file name of the output MP4 file. Will default to the folder name or file name of the first file."
     )
     
     args = parser.parse_args()
@@ -69,5 +68,13 @@ if __name__ == "__main__":
     if len(input_files) < 1:
         print("Error: At least one .h264 file must be provided.")
         exit(1)
+
+    if not args.output:
+        if args.folder: 
+            output_filename = os.path.join(args.folder, os.path.split(args.folder)[1] + ".mp4")  # Folder name as output file
+        else:
+            output_filename = args.files[0] + ".mp4"  # First file name as output file
+    else:
+        output_filename = args.output
     
-    combine_and_convert_h264_to_mp4(input_files, args.output)
+    combine_and_convert_h264_to_mp4(input_files, output_filename)
