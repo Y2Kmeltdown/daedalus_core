@@ -1,45 +1,87 @@
-#!/usr/bin/python
-'''
-  A Simple mjpg stream http server for the Raspberry Pi Camera
-  inspired by https://gist.github.com/n3wtron/4624820
-'''
+#!/usr/bin/python3
 
-from http.server import BaseHTTPRequestHandler,HTTPServer
+# Mostly copied from https://picamera.readthedocs.io/en/release-1.13/recipes2.html
+# Run this script, then point a web browser at http:<this-ip-address>:8000
+# Note: needs simplejpeg to be installed (pip3 install simplejpeg).
+
 import io
-import time
-from picamera2 import Picamera2
+import logging
+import socketserver
+from http import server
+from threading import Condition
 import argparse
 
-camera=None
+from picamera2 import Picamera2
+from picamera2.encoders import JpegEncoder
+from picamera2.outputs import FileOutput
+
+PAGE = """\
+<html>
+<head>
+<title>picamera2 MJPEG streaming demo</title>
+</head>
+<body>
+<h1>Picamera2 MJPEG Streaming Demo</h1>
+<img src="stream.mjpg" width="640" height="480" />
+</body>
+</html>
+"""
 
 
-class CamHandler(BaseHTTPRequestHandler):
-  def do_GET(self):
-    if self.path.endswith('.mjpg'):
-      self.send_response(200)
-      self.send_header('Content-type','multipart/x-mixed-replace; boundary=--jpgboundary')
-      self.end_headers()
-      stream=io.BytesIO()
-      try:
-        start=time.time()
-        for foo in camera.capture_continuous(stream,'jpeg', use_video_port=True):
-          self.wfile.write(bytes("--jpgboundary", "utf8"))
-          self.send_header('Content-type','image/jpeg')
-          self.send_header('Content-length',len(stream.getvalue()))
-          self.end_headers()
-          self.wfile.write(stream.getvalue())
-          stream.seek(0)
-          stream.truncate()
-          #time.sleep(.5)
-      except KeyboardInterrupt:
-        pass
-      return
-    else:
-      self.send_response(200)
-      self.send_header('Content-type','text/html')
-      self.end_headers()
-      self.wfile.write(bytes("<html><head></head><body><img src='/cam.mjpg'/></body></html>", "utf8"))
-      return
+class StreamingOutput(io.BufferedIOBase):
+    def __init__(self):
+        self.frame = None
+        self.condition = Condition()
+
+    def write(self, buf):
+        with self.condition:
+            self.frame = buf
+            self.condition.notify_all()
+
+
+class StreamingHandler(server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        if self.path == '/':
+            self.send_response(301)
+            self.send_header('Location', '/index.html')
+            self.end_headers()
+        elif self.path == '/index.html':
+            content = PAGE.encode('utf-8')
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/html')
+            self.send_header('Content-Length', len(content))
+            self.end_headers()
+            self.wfile.write(content)
+        elif self.path == '/stream.mjpg':
+            self.send_response(200)
+            self.send_header('Age', 0)
+            self.send_header('Cache-Control', 'no-cache, private')
+            self.send_header('Pragma', 'no-cache')
+            self.send_header('Content-Type', 'multipart/x-mixed-replace; boundary=FRAME')
+            self.end_headers()
+            try:
+                while True:
+                    with output.condition:
+                        output.condition.wait()
+                        frame = output.frame
+                    self.wfile.write(b'--FRAME\r\n')
+                    self.send_header('Content-Type', 'image/jpeg')
+                    self.send_header('Content-Length', len(frame))
+                    self.end_headers()
+                    self.wfile.write(frame)
+                    self.wfile.write(b'\r\n')
+            except Exception as e:
+                logging.warning(
+                    'Removed streaming client %s: %s',
+                    self.client_address, str(e))
+        else:
+            self.send_error(404)
+            self.end_headers()
+
+
+class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
+    allow_reuse_address = True
+    daemon_threads = True
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("camera", help="Camera number (for example 0 or 1)")
@@ -51,19 +93,16 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-def main():
-  global camera
-  camera = Picamera2(int(args.camera))
-  camera.resolution = (1280, 960)
-  #camera.resolution = (640, 480)
-  global img
-  try:
-    server = HTTPServer(('',args.port),CamHandler)
-    print("server started")
-    server.serve_forever()
-  except KeyboardInterrupt:
-    camera.close()
-    server.socket.close()
+picam2 = Picamera2(int(args.camera))
+picam2.configure(picam2.create_video_configuration(main={"size": (640, 480)}))
+output = StreamingOutput()
+picam2.start_recording(JpegEncoder(), FileOutput(output))
 
-if __name__ == '__main__':
-  main()
+try:
+    address = ('', args.port)
+    server = StreamingServer(address, StreamingHandler)
+    server.serve_forever()
+finally:
+    picam2.stop_recording()
+
+
