@@ -20,6 +20,7 @@ smbus2==0.4.3
 sparkfun-qwiic-oled-base==0.0.2
 sparkfun-qwiic-oled-display==0.0.2
 sparkfun_qwiic_i2c==1.0.0
+sparkfun-ublox-gps==1.1.5
 # event_stream==1.5.1
 neuromorphic_drivers==0.13.3
 aiohttp==3.9.5   
