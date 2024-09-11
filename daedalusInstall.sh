@@ -1,5 +1,6 @@
 #!/bin/bash
 
+## CONFIGURATION
 sudo raspi-config nonint do_spi 0
 sudo raspi-config nonint do_i2c 0
 sudo raspi-config nonint do_serial_hw 0
@@ -15,6 +16,7 @@ sudo sed -i 's/#HandlePowerKey=poweroff/HandlePowerKey=ignore/g' /etc/systemd/lo
 sudo echo "RuntimeWatchdogSec=15" >> /etc/systemd/system.conf
 sudo echo "RebootWatchdogSec=2min" >> /etc/systemd/system.conf
 
+## DIRECTORY SETUP
 if [ -z "${1}" ]; then
     DAEDALUS_DIR=/usr/local/daedalus/data
 else
@@ -28,31 +30,49 @@ sudo cp -a Config /usr/local/daedalus/config
 
 sudo sed -i "s@SEDPLACEHOLDER@$DAEDALUS_DIR@g" /usr/local/daedalus/config/supervisord.conf
 
+## REPOSITORY FETCH
 sudo apt-get update
 
-sudo apt-get install -y \
-    python3.11 \
-    python3-pip
-
-sudo apt install -y python3-picamera2 --no-install-recommends
-
+## RUST INSTALLATION
 curl https://sh.rustup.rs -sSf | bash -s -- -y
 
 export PATH="$HOME/.cargo/bin:${PATH}"
 echo "export PATH=$HOME/.cargo/bin:${PATH}" >> ~/.bashrc
 
+## PYTHON INSTALLATION
+sudo apt-get install -y \
+    python3.11 \
+    python3-pip
+
+sudo apt install -y python3-picamera2 --no-install-recommends
 pip install --break-system-packages -r /usr/local/daedalus/config/requirements.txt
 
+## DRIVER INSTALLATION
 sudo cp /usr/local/daedalus/config/65-neuromorphic-drivers.rules /etc/udev/rules.d/65-neuromorphic-drivers.rules
 sudo cp /usr/local/daedalus/config/99-camera.rules /etc/udev/rules.d/99-camera.rules
 
+## WATCHDOG INSTALLATION
+wget https://github.com/joan2937/lg/archive/master.zip
+unzip master.zip
+cd lg-master
+sudo make install
+cd ~
+
+sudo apt-get install -y \
+    ttf-wqy-zenhei
+
+sudo cp /usr/local/daedalus/config/external_watchdog.service /lib/systemd/system/external_watchdog.service
+sudo chmod 644 /lib/systemd/system/external_watchdog.service
+sudo systemctl daemon-reload
+sudo systemctl enable external_watchdog.service
+## SUPERVISOR INSTALLATION
 sudo mkdir -p /etc/supervisor/conf.d
 sudo cp /usr/local/daedalus/config/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 sudo apt-get install -y \
     supervisor
 
-
+## NETWORK SET UP AND FINALISATION
 echo -e "Daedalus Core Installed successfully to view running processes visit http://daedalus.local or enter the command supervisorctl status\nReconfiguring eth0 to host device and rebooting.\nPlease Wait."
 sleep 10
 nmcli con delete DAEDALUS_ETH

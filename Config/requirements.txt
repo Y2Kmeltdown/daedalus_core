@@ -14,9 +14,11 @@ pyserial==3.5
 pyusb==1.2.1
 rpi-ws281x==5.0.0
 RPi.GPIO==0.7.1
+gpiozero==2.0
 sysv-ipc==1.1.0
 typing_extensions==4.12.2
 smbus2==0.4.3
+spidev==3.5
 sparkfun-qwiic-oled-base==0.0.2
 sparkfun-qwiic-oled-display==0.0.2
 sparkfun_qwiic_i2c==1.0.0
