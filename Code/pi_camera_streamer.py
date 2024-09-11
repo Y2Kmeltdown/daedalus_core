@@ -94,7 +94,7 @@ parser.add_argument(
 args = parser.parse_args()
 
 picam2 = Picamera2(int(args.camera))
-picam2.configure(picam2.create_video_configuration(main={"size": (640, 480)}))
+picam2.configure(picam2.create_video_configuration(main={"size": (1280, 960)}))
 output = StreamingOutput()
 picam2.start_recording(JpegEncoder(), FileOutput(output))
 
