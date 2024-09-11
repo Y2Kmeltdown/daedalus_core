@@ -1,6 +1,5 @@
 #!/usr/bin/python
 # -*- coding:utf-8 -*-
-import serial
 import os
 import sys
 import logging
@@ -10,7 +9,6 @@ libdir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__)
 if os.path.exists(libdir):
     sys.path.append(libdir)
     
-import RPi.GPIO as GPIO
 import time
 from waveshare_DS3231 import DS3231
 

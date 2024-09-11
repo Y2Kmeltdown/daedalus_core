@@ -1,5 +1,5 @@
 import gpiozero
-import smbus
+import smbus2
 import time
 
 addr = 0x67
@@ -24,7 +24,7 @@ WATCH_TIME_Restart = 60
 
 Feed_dogs = 4
 try:
-    bus = smbus.SMBus(1)
+    bus = smbus2.SMBus(1)
     Feed_dogs = gpiozero.DigitalOutputDevice(Feed_dogs,active_high = True,initial_value =False)
 
     def read(address):
@@ -56,7 +56,7 @@ try:
         write_word(WATCH_TIME,WATCH_TIME_Restart) #Set the timeout, currently 60 seconds 设置超时时间，当前时间为60秒
 
     else:
-        print("inti fail")
+        print("init fail")
 
     while True:
         #Feed the dog every 0.8 seconds  每0.8秒喂一次狗
