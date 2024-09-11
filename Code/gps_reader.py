@@ -52,7 +52,7 @@ if __name__ == '__main__':
 
   parser.add_argument("port", help="Serial Port for GPS", type=str)
   parser.add_argument(
-		"--path",
+		"--data_path",
 		default=str("/usr/local/daedalus/data/gps"),
 		help="Path to folder to save GPS data",
 	)
@@ -60,7 +60,7 @@ if __name__ == '__main__':
   #/dev/ttyAMA0
   
   try:
-    run(args.port, args.path)
+    run(args.port, args.data_path)
   except (KeyboardInterrupt, SystemExit) as exErr:
     print("\nEnding gps_reader.py")
     sys.exit(0)
