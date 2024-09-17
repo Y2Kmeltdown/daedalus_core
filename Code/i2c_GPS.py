@@ -1,4 +1,8 @@
 from smbus2 import SMBus
+import csv
+import argparse
+import os
+import sys
 
 i2cbus = SMBus(1)
 
@@ -34,48 +38,61 @@ def get_gps_burst() -> list[bytearray]:
     return GPS_Packet
 
 def get_rmc(gps_burst: list[bytearray]):
-    packerHeader = []
-    rmc = [i.decode("utf-8").split(",") for i in gps_burst if i.find(b'$GNRMC') != -1][0]
-    print(rmc)
+    
+    try:
+        rmc = [i.decode("utf-8").split(",") for i in gps_burst if i.find(b'$GNRMC') != -1][0]
+
+        print(rmc)
+    except:
+        pass
 
 def get_vtg(gps_burst: list[bytearray]):
-    packetHeader = []
-    vtg = [i.decode("utf-8").split(",") for i in gps_burst if i.find(b'$GNVTG') != -1][0]
-    print(vtg)
+    try:
+        vtg = [i.decode("utf-8").split(",") for i in gps_burst if i.find(b'$GNVTG') != -1][0]
+        print(vtg)
+    except:
+        pass
 
 def get_gga(gps_burst: list[bytearray]):
-    packetHeader = []
-    gga = [i.decode("utf-8").split(",") for i in gps_burst if i.find(b'$GNGGA') != -1][0]
-    print(gga)
+    try:
+        gga = [i.decode("utf-8").split(",") for i in gps_burst if i.find(b'$GNGGA') != -1][0]
+        print(gga)
+    except:
+        pass
 
 def get_gll(gps_burst: list[bytearray]):
-    packetHeader = []
-    gll = [i.decode("utf-8").split(",") for i in gps_burst if i.find(b'$GNGLL') != -1][0]
-    print(gll)
+    try:
+        gll = [i.decode("utf-8").split(",") for i in gps_burst if i.find(b'$GNGLL') != -1][0]
+        print(gll)
+    except:
+        pass
 
 def get_gsa(gps_burst: list[bytearray]):
-    packetHeader = []
-    gsa = [i.decode("utf-8").split(",") for i in gps_burst if i.find(b'$GNGSA') != -1]
+    try:
+        gsa = [i.decode("utf-8").split(",") for i in gps_burst if i.find(b'$GNGSA') != -1]
+    except:
+        pass
 
 def get_gsv(gps_burst: list[bytearray]):
-    packetHeader = []
-    gpgsv = [i.decode("utf-8").split(",") for i in gps_burst if i.find(b'$GPGSV') != -1]
-    glgsv = [i.decode("utf-8").split(",") for i in gps_burst if i.find(b'$GLGSV') != -1]
-    gagsv = [i.decode("utf-8").split(",") for i in gps_burst if i.find(b'$GAGSV') != -1]
-    gbgsv = [i.decode("utf-8").split(",") for i in gps_burst if i.find(b'$GBGSV') != -1]
-    gqgsv = [i.decode("utf-8").split(",") for i in gps_burst if i.find(b'$GQGSV') != -1]
+    try:
+        gpgsv = [i.decode("utf-8").split(",") for i in gps_burst if i.find(b'$GPGSV') != -1]
+        glgsv = [i.decode("utf-8").split(",") for i in gps_burst if i.find(b'$GLGSV') != -1]
+        gagsv = [i.decode("utf-8").split(",") for i in gps_burst if i.find(b'$GAGSV') != -1]
+        gbgsv = [i.decode("utf-8").split(",") for i in gps_burst if i.find(b'$GBGSV') != -1]
+        gqgsv = [i.decode("utf-8").split(",") for i in gps_burst if i.find(b'$GQGSV') != -1]
+    except:
+        pass
     
-
-# packetHeader = [headers]
-# byte.decode("utf-8")
-# string.split(",")
-# 
 
 if __name__ == "__main__":
     while(True):
         GPS_burst = get_gps_burst()
+        #print(GPS_burst)
         get_rmc(GPS_burst)
         get_vtg(GPS_burst)
         get_gga(GPS_burst)
+        get_gll(GPS_burst)
+        get_gsa(GPS_burst)
+        get_gsv(GPS_burst)
 
     
