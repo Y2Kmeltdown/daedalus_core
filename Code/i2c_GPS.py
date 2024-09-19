@@ -22,7 +22,7 @@ def get_gps_burst() -> list[bytearray]:
         if AvBytes1 != 0 or AvBytes2 != 0:
             DataStream = i2cbus.read_byte_data(i2cAddress, DataStream_REG)
             
-            if DataStream == 36: # If value in data stream is $ ascii character
+            if DataStream == 36: # If value in data stream is "$" ascii character
                 packet = bytearray()
                 packet.append(DataStream)
             elif DataStream == 10: # If value in data stream is newline character "\n"
@@ -40,49 +40,59 @@ def get_gps_burst() -> list[bytearray]:
 def get_rmc(gps_burst: list[bytearray]):
     
     try:
-        rmc = [i.decode("utf-8").split(",") for i in gps_burst if i.find(b'$GNRMC') != -1][0]
+        rmc = [i.decode("utf-8").split(",") for i in gps_burst if i.find(b'$GNRMC') != -1][0] # Decode bytes into utf-8 chars then split string using "," as a delimiter for any packet that contains the bytes b"$GNRMC" in it.
 
         print(rmc)
     except:
-        pass
+        rmc = None
+    return rmc
 
 def get_vtg(gps_burst: list[bytearray]):
     try:
-        vtg = [i.decode("utf-8").split(",") for i in gps_burst if i.find(b'$GNVTG') != -1][0]
+        vtg = [i.decode("utf-8").split(",") for i in gps_burst if i.find(b'$GNVTG') != -1][0] # Decode bytes into utf-8 chars then split string using "," as a delimiter for any packet that contains the bytes b"$GNVTG" in it.
         print(vtg)
     except:
-        pass
+        vtg = None
+    return vtg
 
 def get_gga(gps_burst: list[bytearray]):
     try:
-        gga = [i.decode("utf-8").split(",") for i in gps_burst if i.find(b'$GNGGA') != -1][0]
+        gga = [i.decode("utf-8").split(",") for i in gps_burst if i.find(b'$GNGGA') != -1][0] # Decode bytes into utf-8 chars then split string using "," as a delimiter for any packet that contains the bytes b"$GNGGA" in it.
         print(gga)
     except:
-        pass
+        gga = None
+    return gga
 
 def get_gll(gps_burst: list[bytearray]):
     try:
-        gll = [i.decode("utf-8").split(",") for i in gps_burst if i.find(b'$GNGLL') != -1][0]
+        gll = [i.decode("utf-8").split(",") for i in gps_burst if i.find(b'$GNGLL') != -1][0] # Decode bytes into utf-8 chars then split string using "," as a delimiter for any packet that contains the bytes b"$GNGLL" in it.
         print(gll)
     except:
-        pass
+        gll = None
+    
+    return gll
 
 def get_gsa(gps_burst: list[bytearray]):
     try:
-        gsa = [i.decode("utf-8").split(",") for i in gps_burst if i.find(b'$GNGSA') != -1]
+        gsa = [i.decode("utf-8").split(",") for i in gps_burst if i.find(b'$GNGSA') != -1] # Decode bytes into utf-8 chars then split string using "," as a delimiter for any packet that contains the bytes b"$GNGSA" in it.
+        print(gsa)
     except:
-        pass
+        gsa = None
+    return gsa
 
 def get_gsv(gps_burst: list[bytearray]):
     try:
-        gpgsv = [i.decode("utf-8").split(",") for i in gps_burst if i.find(b'$GPGSV') != -1]
-        glgsv = [i.decode("utf-8").split(",") for i in gps_burst if i.find(b'$GLGSV') != -1]
-        gagsv = [i.decode("utf-8").split(",") for i in gps_burst if i.find(b'$GAGSV') != -1]
-        gbgsv = [i.decode("utf-8").split(",") for i in gps_burst if i.find(b'$GBGSV') != -1]
-        gqgsv = [i.decode("utf-8").split(",") for i in gps_burst if i.find(b'$GQGSV') != -1]
+        gsv = {
+            "gpgsv":[i.decode("utf-8").split(",") for i in gps_burst if i.find(b'$GPGSV') != -1], # Decode bytes into utf-8 chars then split string using "," as a delimiter for any packet that contains the bytes b"$GPGSV" in it.
+            "glgsv":[i.decode("utf-8").split(",") for i in gps_burst if i.find(b'$GLGSV') != -1], # Decode bytes into utf-8 chars then split string using "," as a delimiter for any packet that contains the bytes b"$GLGSV" in it.
+            "gagsv":[i.decode("utf-8").split(",") for i in gps_burst if i.find(b'$GAGSV') != -1], # Decode bytes into utf-8 chars then split string using "," as a delimiter for any packet that contains the bytes b"$GAGSV" in it.
+            "gbgsv":[i.decode("utf-8").split(",") for i in gps_burst if i.find(b'$GBGSV') != -1], # Decode bytes into utf-8 chars then split string using "," as a delimiter for any packet that contains the bytes b"$GBGSV" in it.
+            "gqgsv":[i.decode("utf-8").split(",") for i in gps_burst if i.find(b'$GQGSV') != -1]  # Decode bytes into utf-8 chars then split string using "," as a delimiter for any packet that contains the bytes b"$GQGSV" in it.
+        }
+        print(gsv)
     except:
-        pass
-    
+        gsv = None
+    return gsv
 
 if __name__ == "__main__":
     while(True):
