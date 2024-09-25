@@ -107,11 +107,11 @@ if __name__ == "__main__":
     args = parser.parse_args()
     #i2cAddress = 0x42
 
-    if not os.path.isdir(args.datapath):
-        os.makedirs(args.datapath)
+    if not os.path.isdir(args.data_path):
+        os.makedirs(args.data_path)
     start_time = datetime.now().strftime("%Y-%d-%m_%H-%M-%S")
     filename = "gps-data_" + start_time + ".txt"
-    with open(os.path.join(args.datapath, filename), 'w', newline='') as gpsfile:
+    with open(os.path.join(args.data_path, filename), 'w', newline='') as gpsfile:
         
         while(True):
             GPS_burst = get_gps_burst(args.address)
