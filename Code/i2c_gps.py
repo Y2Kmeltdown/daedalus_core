@@ -117,8 +117,8 @@ if __name__ == "__main__":
             GPS_burst = get_gps_burst(int(args.address, 16))
             
             for packet in GPS_burst:
-                gpsfile.write("%s\n" % packet)
-                print(f"{packet.decode('utf-8')}\n")
+                gpsfile.write("%s\n" % packet.decode('utf-8'))
+                print(f"{packet.decode('utf-8')}")
             #get_rmc(GPS_burst)
             #get_vtg(GPS_burst)
             #get_gga(GPS_burst)
