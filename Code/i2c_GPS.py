@@ -3,21 +3,22 @@ import csv
 import argparse
 import os
 import sys
+from datetime import datetime
 
 i2cbus = SMBus(1)
 
-i2cAddress = 0x42
 
-AvBytes_REG1 = 0xFD
-AvBytes_REG2 = 0xFE
-DataStream_REG = 0xFF
 
-def get_gps_burst() -> list[bytearray]:
+
+def get_gps_burst(i2c_address) -> list[bytearray]:
+    AvBytes_REG1 = 0xFD
+    AvBytes_REG2 = 0xFE
+    DataStream_REG = 0xFF
     GPS_Packet = []
     packet = bytearray()
     while(True):
-        AvBytes1 = i2cbus.read_byte_data(i2cAddress, AvBytes_REG1)
-        AvBytes2 = i2cbus.read_byte_data(i2cAddress, AvBytes_REG2)
+        AvBytes1 = i2cbus.read_byte_data(i2c_address, AvBytes_REG1)
+        AvBytes2 = i2cbus.read_byte_data(i2c_address, AvBytes_REG2)
 
         if AvBytes1 != 0 or AvBytes2 != 0:
             DataStream = i2cbus.read_byte_data(i2cAddress, DataStream_REG)
@@ -95,14 +96,34 @@ def get_gsv(gps_burst: list[bytearray]):
     return gsv
 
 if __name__ == "__main__":
-    while(True):
-        GPS_burst = get_gps_burst()
-        #print(GPS_burst)
-        get_rmc(GPS_burst)
-        get_vtg(GPS_burst)
-        get_gga(GPS_burst)
-        get_gll(GPS_burst)
-        get_gsa(GPS_burst)
-        get_gsv(GPS_burst)
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+    parser.add_argument("address", help="i2c Address for GPS", type=str)
+    parser.add_argument(
+		"--data_path",
+		default=str("/usr/local/daedalus/data/gps"),
+		help="Path to folder to save GPS data",
+	)
+    args = parser.parse_args()
+    #i2cAddress = 0x42
+
+    if not os.path.isdir(args.datapath):
+        os.makedirs(args.datapath)
+    start_time = datetime.now().strftime("%Y-%d-%m_%H-%M-%S")
+    filename = "gps-data_" + start_time + ".txt"
+    with open(os.path.join(args.datapath, filename), 'w', newline='') as gpsfile:
+        
+        while(True):
+            GPS_burst = get_gps_burst(args.address)
+            
+            for packet in GPS_burst:
+                gpsfile.write("%s\n" % packet)
+            #print(GPS_burst)
+            #get_rmc(GPS_burst)
+            #get_vtg(GPS_burst)
+            #get_gga(GPS_burst)
+            #get_gll(GPS_burst)
+            #get_gsa(GPS_burst)
+            #get_gsv(GPS_burst)
 
     
