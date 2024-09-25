@@ -20,6 +20,9 @@ if [ -z "${1}" ]; then
     DAEDALUS_DIR=/usr/local/daedalus/data
 else
     DAEDALUS_DIR=$1
+    mkdir -p /usr/local/daedalus/data
+    touch /usr/local/daedalus/data/where_are_my_files.txt
+    echo "Data Files have been set to $1 during installation" >> /usr/local/daedalus/data/where_are_my_files.txt
 fi
 mkdir -p $DAEDALUS_DIR
 
@@ -27,7 +30,7 @@ sudo mkdir -p /usr/local/daedalus
 sudo cp -a Code /usr/local/daedalus/code
 sudo cp -a Config /usr/local/daedalus/config
 
-sudo sed -i "s@SEDPLACEHOLDER@$DAEDALUS_DIR@g" /usr/local/daedalus/config/supervisord.conf
+sudo sed -i "s@/usr/local/daedalus/data@$DAEDALUS_DIR@g" /usr/local/daedalus/config/supervisord.conf
 
 ## REPOSITORY FETCH
 sudo apt-get update
