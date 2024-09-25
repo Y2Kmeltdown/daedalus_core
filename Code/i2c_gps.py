@@ -21,7 +21,7 @@ def get_gps_burst(i2c_address) -> list[bytearray]:
         AvBytes2 = i2cbus.read_byte_data(i2c_address, AvBytes_REG2)
 
         if AvBytes1 != 0 or AvBytes2 != 0:
-            DataStream = i2cbus.read_byte_data(i2cAddress, DataStream_REG)
+            DataStream = i2cbus.read_byte_data(i2c_address, DataStream_REG)
             
             if DataStream == 36: # If value in data stream is "$" ascii character
                 packet = bytearray()
