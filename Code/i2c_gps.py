@@ -114,7 +114,7 @@ if __name__ == "__main__":
     with open(os.path.join(args.data_path, filename), 'w', newline='') as gpsfile:
         
         while(True):
-            GPS_burst = get_gps_burst(args.address)
+            GPS_burst = get_gps_burst(int(args.address, 16))
             
             for packet in GPS_burst:
                 gpsfile.write("%s\n" % packet)
