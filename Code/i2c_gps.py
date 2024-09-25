@@ -118,7 +118,7 @@ if __name__ == "__main__":
             
             for packet in GPS_burst:
                 gpsfile.write("%s\n" % packet)
-            print(GPS_burst)
+                print(f"{packet.decode('utf-8')}\n")
             #get_rmc(GPS_burst)
             #get_vtg(GPS_burst)
             #get_gga(GPS_burst)
