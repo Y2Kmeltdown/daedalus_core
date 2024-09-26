@@ -35,6 +35,10 @@ sudo sed -i "s@/usr/local/daedalus/data@$DAEDALUS_DIR@g" /usr/local/daedalus/con
 ## REPOSITORY FETCH
 sudo apt-get update
 
+## I2C Tools install
+sudo apt-get install -y \
+    i2c-tools
+
 ## RUST INSTALLATION
 curl https://sh.rustup.rs -sSf | bash -s -- -y
 
