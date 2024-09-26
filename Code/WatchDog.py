@@ -52,7 +52,7 @@ try:
         write(WATCH_ON_OFF,WATCH_ON)#Enable watchdog function
         time.sleep(0.5)
         write(WATCH_STATE,WATCH_ON_LED | WATCH_NO_Timeout)  #Turn on the LED status indicator and clear the timeout flag
-        write_word(WATCH_TIME,WATCH_TIME_Restart) #Set the timeout, currently 60 seconds
+        write_word(WATCH_TIME,WATCH_TIME_Restart) #Set the timeout
 
     else:
         print("init fail")

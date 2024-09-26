@@ -4,8 +4,10 @@ import argparse
 import os
 import sys
 from datetime import datetime
+import time
 
 i2cbus = SMBus(1)
+time.sleep(1)
 
 
 
