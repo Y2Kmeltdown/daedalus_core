@@ -31,8 +31,8 @@ def get_gps_burst(i2c_address) -> list[bytearray]:
             elif DataStream == 10: # If value in data stream is newline character "\n"
                 GPS_Packet.append(packet)
                 packet = bytearray()
-            elif DataStream == 13: # If value in data stream is carriage return character "\r"
-                pass
+            elif DataStream == 13: # If value in data stream is carriage return character "\r" if you want to remove carriage return edit this line
+                packet.append(DataStream)
             else:
                 packet.append(DataStream)
             
