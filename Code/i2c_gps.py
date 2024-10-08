@@ -12,7 +12,7 @@ time.sleep(1)
 
 
 
-def get_gps_burst(i2c_address) -> list[bytes]:
+def get_gps_burst(i2c_address) -> list[bytearray]:
     AvBytes_REG1 = 0xFD
     AvBytes_REG2 = 0xFE
     DataStream_REG = 0xFF

@@ -1,6 +1,6 @@
 
 
-def checksumValidator(packet:bytes) -> bool:
+def checksumValidator(packet:bytearray) -> bool:
     checksum = 0
     for byte in packet[1:-5]:
         checksum ^= byte
@@ -13,7 +13,7 @@ def checksumValidator(packet:bytes) -> bool:
     else:
         return False
 
-def packetRepairer(packet:bytes, repairLimit:int=1) -> tuple[bytes, bool, bool] :
+def packetRepairer(packet:bytearray, repairLimit:int=1) -> tuple[bytes, bool, bool] :
     """
     """
     valid = False
@@ -88,7 +88,7 @@ if __name__ == "__main__":
     #print(checksumValidator(bytes(gps_tp,"utf-8")))
     
 
-    output = packetRepairer(bytes(gps_test,"utf-8"), repairLimit=2)
+    output = packetRepairer(bytearray(gps_test,"utf-8"), repairLimit=2)
     print(output)
     
 
