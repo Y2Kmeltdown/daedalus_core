@@ -157,7 +157,19 @@ After following the steps from the previous section.
 - Press `Ctrl+Shift+P` again and type `Remote-SSH: Connect to Host`, then select `daedalus@<ip_from_previous_section>`
 - Type password: `daedalus`
 
-All done. Skip to `Configuring the Pi` section to proceed.
+The content of the config file will be like this:
+
+```bash
+Host daedalus
+  HostName 10.42.0.123
+  User daedalus
+```
+
+Don't forget to add the correct IP address.
+
+All done!!
+
+ Skip to `Configuring the Pi` section to proceed.
 
 
 ## Manual Installation (Windows)
