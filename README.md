@@ -1,4 +1,7 @@
 # Daedalus Core
+
+This branch is maintained by: Sami Arja
+
 ## About
 Daedalus Core is a docker image and set of scripts that handle the collection of data from sensors on a raspberry pi. Daedalus core is designed to be flexible in implementation and simple to modify. It uses supervisord to daemonise python scripts for data collection and monitor their function.
 
