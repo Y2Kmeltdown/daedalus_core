@@ -2,15 +2,165 @@
 
 This branch is maintained by: Sami Arja
 
+
+## Table of Contents
+- [About](#about)
+- [Simple Install (Preferred)](#simple-install-preferred)
+- [Manual Installation (Ubuntu)](#manual-installation-ubuntu)
+  - [Setting up the image](#setting-up-the-image)
+  - [Connecting the Pi](#connecting-the-pi)
+  - [SSH into the Pi (Terminal)](#ssh-into-the-pi-terminal)
+  - [SSH into the Pi (VSC)](#ssh-into-the-pi-vsc)
+- [Manual Installation (Windows)](#manual-installation-windows)
+  - [Setting up the image](#setting-up-the-image)
+  - [Connecting to the Pi](#connecting-to-the-pi)
+    - [Direct connection](#direct-connection)
+    - [Ethernet connection](#ethernet-connection)
+    - [Wi-Fi connection](#wi-fi-connection)
+    - [Host computer](#host-computer)
+- [Configuring the Pi](#configuring-the-pi)
+- [How to use](#how-to-use)
+  - [Accessing supervisord](#accessing-supervisord)
+  - [Accessing mjpeg server](#accessing-mjpeg-server)
+- [How it works](#how-it-works)
+- [Modifying Daedalus Core](#modifying-daedalus-core)
+- [Appendix](#appendix)
+  - [Installing Bonjour](#installing-bonjour)
+  - [Using Windows as a host device](#using-windows-as-a-host-device)
+    - [Automatic Method](#automatic-method)
+    - [Manual Method](#manual-method)
+
 ## About
 Daedalus Core is a docker image and set of scripts that handle the collection of data from sensors on a raspberry pi. Daedalus core is designed to be flexible in implementation and simple to modify. It uses supervisord to daemonise python scripts for data collection and monitor their function.
+
+
 
 ## Simple Install (Preferred)
 You can use a raspberry pi image preloaded with the required configuration if you don't want to go through the steps of installing all the prerequisites. For this you can contact Nic Ralph(n.ralph@westernsydney.edu.au) and he will provide you with the image. Using a tool like balenaEtcher or raspberry pi imager, you can load an SD card with the image and insert it into a raspberry pi and have it up and running. 
 
 **IMPORTANT NOTE:** The image is designed for raspberry pi 5 and may not be compatible with raspberry pi 4s.
 
-## Manual Installation
+## Manual Installation (Ubuntu)
+
+### Setting up the image
+Step 1: Install [raspberry pi imager](https://www.raspberrypi.com/software/) and select **Download for Ubuntu for x86** option. A .deb file will be downloaded.
+
+Step 2: To install the .deb file run the following:
+
+```sh
+sudo dpkg -i imager_<whatever-version-that-is>_amd64.deb
+```
+
+Step 3: Search for **Imager** software.
+
+Step 4: On the GUI select the following option:
+    
+    - CHOOSE DEVICE: Raspberry pi 5
+    - CHOOSE OS: Raspberry Pi OS (other) -> Raspberry Pi OS Lite (32-bit)
+    - CHOOSE STORAGE: ***Select the option based on the SD card name***
+
+Step 5: Edit the settings like in the figures below
+
+<div align="center">
+<img src="Figures/front.png" alt="Rotated image" width="300">
+<img src="Figures/sshoption.png" alt="Rotated image" width="300">
+</div>
+
+Username: daedalus
+
+Password: daedalus
+
+Step 6: Remove SD card and plug it into the raspberry pi.
+
+### Connecting the Pi
+You need the following cables:
+    
+    - A USB-C to USB cable
+    - An ethernet cable
+
+Connection looks like this:
+
+<div align="center">
+<img src="Figures/piconnection.png" alt="Rotated image" width="300">
+</div>
+
+
+### SSH into the Pi (Terminal)
+
+**Set Up Internet Connection Sharing on Ubuntu**
+ 
+Open the Network Connections editor via terminal:
+
+```sh
+nm-connection-editor
+```
+
+**Create a New Ethernet Connection:**
+
+- In the Network Connections window, click "Add".
+- Select "Ethernet" and click "Create...".
+
+**Configure the Ethernet Connection for Sharing:**
+
+On the "IPv4 Settings" Tab:
+
+- Set "Method" to "Shared to other computers"
+
+**Save** the connection and close window.
+
+**Find the Raspberry Pi's IP Address**
+
+Open Terminal and run:
+
+```sh
+sudo apt install nmap
+sudo nmap -sn 10.42.0.0/24
+```
+
+Example of the output:
+
+```sh
+Nmap scan report for 10.42.0.57
+Host is up (0.00036s latency).
+MAC Address: B8:27:EB:XX:XX:XX (Raspberry Pi Foundation)
+```
+
+Note the IP address of your Pi is (e.g., 10.42.0.57)
+
+**SSH into the Raspberry Pi Using its IP Address**
+
+In a new terminal, Run:
+
+```sh
+ssh daedalus@10.42.0.57
+```
+
+Example output:
+
+```sh
+The authenticity of host '10.42.0.57 (10.42.0.57)' can't be established.
+ECDSA key fingerprint is SHA256:...
+Are you sure you want to continue connecting (yes/no/[fingerprint])?
+```
+
+Type yes and press Enter.
+
+### SSH into the Pi (VSC)
+
+After following the steps from the previous section.
+
+- Install the Remote - SSH extension in Visual Studio Code
+- Press `Ctrl+Shift+P` to open the Command Palette
+- Type `Remote-SSH: Add New SSH Host` and select it
+- Enter your SSH connection: ssh daedalus@<ip_from_previous_section>
+- Select the default SSH configuration (`~/.ssh/config`)
+- Press `Ctrl+Shift+P` again and type `Remote-SSH: Connect to Host`, then select `daedalus@<ip_from_previous_section>`
+- Type password: `daedalus`
+
+All done. Skip to `Configuring the Pi` section to proceed.
+
+
+## Manual Installation (Windows)
 
 ### Setting up the image
 To get started with daedalus core you will need a raspberry pi preferably a raspberry pi 5 and a suitably sized SD card for your application. Firstly you will need to install raspbian lite. The easiest way is to use the [raspberry pi imager](https://downloads.raspberrypi.org/imager/imager_latest.exe). Make sure you modify the settings to update the hostname to whatever is most memorable and set a simple username and password. Finally you should also go to services and enable ssh using password or public key authentication, this is the easiest way to interact with the raspberry pi once raspbian lite is installed. With all the settings done you can write the image to an SD card.
@@ -26,7 +176,7 @@ If you set up wireless LAN before writing the image to the SD card you can SSH i
 #### Host computer
 Finally the most ideal method is to use your main computer as a host and connect an ethernet cable directly from the raspberry pi to an ethernet port on your main device. See [Using Windows as a host device](#using-windows-as-a-host-device) for setting up your computer as a host device.
 
-### Configuring the Pi
+## Configuring the Pi
 Once you have a method of interacting with the raspberry pi you should set up a few things. 
 
 First you should run the following commands to ensure the repositories are up to date and git is installed:
