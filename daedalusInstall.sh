@@ -88,4 +88,6 @@ nmcli con modify DAEDALUS_ETH ipv6.method disabled
 nmcli con modify DAEDALUS_ETH connection.autoconnect yes
 nmcli con up DAEDALUS_ETH
 
+sudo chmod -R 777 $DAEDALUS_DIR
+
 sudo reboot
