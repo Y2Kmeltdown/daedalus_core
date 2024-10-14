@@ -62,7 +62,7 @@ wget https://github.com/joan2937/lg/archive/master.zip
 unzip master.zip
 cd lg-master
 sudo make install
-cd ~
+cd ../
 
 sudo apt-get install -y \
     ttf-wqy-zenhei
@@ -71,6 +71,18 @@ sudo cp /usr/local/daedalus/config/external_watchdog.service /lib/systemd/system
 sudo chmod 644 /lib/systemd/system/external_watchdog.service
 sudo systemctl daemon-reload
 sudo systemctl enable external_watchdog.service
+
+## GPS INSTALLATION
+
+sudo apt-get install -y \
+    libclang-dev \
+    clang
+
+sudo git clone https://github.com/neuromorphicsystems/gps-imu.git /usr/local/daedalus/code/GPS
+cd /usr/local/daedalus/code/GPS
+sudo touch gps.nmea
+cd ~/daedalus_core
+
 ## SUPERVISOR INSTALLATION
 sudo mkdir -p /etc/supervisor/conf.d
 sudo cp /usr/local/daedalus/config/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
