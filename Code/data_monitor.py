@@ -7,6 +7,7 @@ import numpy as np
 from time import sleep
 import logging
 
+###############TODO REWRITE WITH SUPERVISOR CTL COMMANDS AND TICK OR CROSSES FOR EACH COMPONENT #############################
 
 
 switch_num = 2
