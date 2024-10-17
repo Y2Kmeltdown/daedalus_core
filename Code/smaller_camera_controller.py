@@ -82,6 +82,11 @@ parser.add_argument(
     type=str,
     help="Path to configuration json for camera properties",
 )
+parser.add_argument(
+    "--backups",
+    default=str("/usr/local/daedalus/data"),
+    help="Path of the directory where recordings are backed up",
+)
 args = parser.parse_args()
 
 if __name__ == "__main__":

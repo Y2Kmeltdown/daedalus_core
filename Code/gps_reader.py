@@ -56,6 +56,11 @@ if __name__ == '__main__':
 		default=str("/usr/local/daedalus/data/gps"),
 		help="Path to folder to save GPS data",
 	)
+  parser.add_argument(
+    "--backups",
+    default=str("/usr/local/daedalus/data"),
+    help="Path of the directory where recordings are backed up",
+  )
   args = parser.parse_args()
   #/dev/ttyAMA0
   

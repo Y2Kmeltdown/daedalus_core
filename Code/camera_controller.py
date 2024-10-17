@@ -72,6 +72,11 @@ parser.add_argument(
     help="Path of the directory where recordings are stored",
 )
 parser.add_argument(
+    "--backups",
+    default=str("/usr/local/daedalus/data"),
+    help="Path of the directory where recordings are backed up",
+)
+parser.add_argument(
     "--timer",
     default=10,
     type=int,
