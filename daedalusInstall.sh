@@ -17,7 +17,7 @@ sudo echo "RebootWatchdogSec=2min" >> /etc/systemd/system.conf
 
 ## DIRECTORY SETUP
 if [ -z "${1}" ]; then
-    DAEDALUS_DIR=/usr/local/daedalus/data
+    DAEDALUS_DIR=/mnt/data
 else
     DAEDALUS_DIR=$1
     mkdir -p /usr/local/daedalus/data
@@ -25,6 +25,9 @@ else
     echo "Data Files have been set to $1 during installation" >> /usr/local/daedalus/data/where_are_my_files.txt
 fi
 mkdir -p $DAEDALUS_DIR
+
+sudo mkdir /mnt/data
+sudo echo "/dev/sda1  /mnt/data  auto  noatime,rw,nofail,noauto,x-systemd.automount" >> /etc/fstab
 
 sudo mkdir -p /usr/local/daedalus
 sudo cp -a Code /usr/local/daedalus/code
