@@ -19,12 +19,12 @@ configuration = nd.prophesee_evk4.Configuration(
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("serial", help="Camera serial number (for example 00050423)")
 parser.add_argument(
-    "--recordings",
+    "--data",
     default=str(dirname / "recordings"),
     help="Path of the directory where recordings are stored",
 )
 parser.add_argument(
-    "--backups",
+    "--backup",
     default=str("/usr/local/daedalus/data"),
     help="Path of the directory where recordings are backed up",
 )
@@ -42,7 +42,7 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-output_directory = pathlib.Path(args.recordings).resolve() / f"evk4_{args.serial}"
+output_directory = pathlib.Path(args.data).resolve() / f"evk4_{args.serial}"
 output_directory.mkdir(parents=True, exist_ok=True)
 
 def record_5Mins():

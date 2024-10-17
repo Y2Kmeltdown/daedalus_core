@@ -76,19 +76,19 @@ if __name__ == '__main__':
 
 	parser.add_argument("i2c_address", help="I2C address for IMU", type=str)
 	parser.add_argument(
-		"--path",
+		"--data",
 		default=str(Path.home() / 'data/imu_horizon'),
 		help="Path to folder to save IMU data",
 	)
 	parser.add_argument(
-    "--backups",
+    "--backup",
     default=str("/usr/local/daedalus/data"),
     help="Path of the directory where recordings are backed up",
 	)
 	args = parser.parse_args()
 
 	try:
-		readIMU(int(args.i2c_address, 16), args.path)
+		readIMU(int(args.i2c_address, 16), args.data)
 	except (KeyboardInterrupt, SystemExit) as exErr:
 		print("\nEnding imu_reader.py")
 		sys.exit(0)

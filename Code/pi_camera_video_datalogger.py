@@ -12,7 +12,7 @@ dirname = Path(__file__).resolve().parent
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("camera", help="Camera number (for example 0 or 1)")
 parser.add_argument(
-    "--data_path",
+    "--data",
     default=str(dirname / "vid_recordings"),
     help="Path of the directory where recordings are stored",
 )
@@ -60,7 +60,7 @@ def cameraControls(camera:Picamera2, jsonConfig:str):
     
 
 if __name__ == "__main__":
-    Path(args.data_path).mkdir(parents=True, exist_ok=True)
+    Path(args.data).mkdir(parents=True, exist_ok=True)
 
     picam = Picamera2(int(args.camera))
     # config = picam.create_video_configuration(controls={"FrameDurationLimits": (40000, 100000)})
@@ -74,7 +74,7 @@ if __name__ == "__main__":
 
     while True:
         timestr = time.strftime("%Y%m%d-%H%M%S")
-        output = f'{args.data_path}/cam_{picam.camera_idx}_vid_{timestr}'
+        output = f'{args.data}/cam_{picam.camera_idx}_vid_{timestr}'
 
         picam.start_encoder(encoder, f'{output}.h264',quality=Quality.HIGH)
         time.sleep(args.vid_duration)

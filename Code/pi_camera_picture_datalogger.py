@@ -67,12 +67,12 @@ dirname = Path(__file__).resolve().parent
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("camera", help="Camera number (for example 0 or 1)")
 parser.add_argument(
-    "--data_path",
+    "--data",
     default=str(dirname / "recordings"),
     help="Path of the directory where recordings are stored",
 )
 parser.add_argument(
-    "--backups",
+    "--backup",
     default=str("/usr/local/daedalus/data"),
     help="Path of the directory where recordings are backed up",
 )
@@ -90,7 +90,7 @@ parser.add_argument(
 args = parser.parse_args()
 
 if __name__ == "__main__":
-    Path(args.data_path).mkdir(parents=True, exist_ok=True)
+    Path(args.data).mkdir(parents=True, exist_ok=True)
     picam = Picamera2(int(args.camera))
     config = picam.create_still_configuration()
     picam.configure(config)
@@ -103,5 +103,5 @@ if __name__ == "__main__":
 
     # TODO UNCOMMENT THIS WHEN FINISHED TESTING
     while True:
-        snapshot(picam, args.data_path)
+        snapshot(picam, args.data)
         time.sleep(args.timer)

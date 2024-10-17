@@ -18,12 +18,12 @@ from waveshare_DS3231 import DS3231
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("i2c_address", help="i2c address for RTC", type=str)
 parser.add_argument(
-	"--data_path",
+	"--data",
 	default=str("/usr/local/daedalus/data/rtc"),
 	help="Path to folder to save rtc data",
 )
 args = parser.parse_args()
-dir_path = args.data_path
+dir_path = args.data
 
 fieldnames = ['Timestamp', 'RTC_Date', 'RTC_Time', 'RTC_Temperature']
 

@@ -44,7 +44,7 @@ def get_folder_size(folder_path):
 def get_folder_paths(args_dict):
     folder_paths = []
     for folder in folder_names:
-        main_dir = args_dict['data_path']
+        main_dir = args_dict['data']
         folder_path = os.path.join(main_dir, folder)
         folder_paths.append(folder_path)
 
@@ -114,7 +114,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument(
-		"--data_path",
+		"--data",
 		default=str(Path.home() / 'data'),
 		help="Path of parent folder. Assumed to have folders ['evk4_horizon', 'cmos_horizon', 'imu_horizon', 'evk4_space',  'cmos_space', 'imu_space'] unless a specific path is given as an argument.",
 	)
@@ -154,9 +154,9 @@ if __name__ == '__main__':
     myOLED.begin()
     run_display("Daedalus OLED Displayinitialising...", myOLED)
     
-    initial_sizes = get_fsizes(folder_paths, args.data_path)
+    initial_sizes = get_fsizes(folder_paths, args.data)
     sleep(delay)
-    final_sizes = get_fsizes(folder_paths, args.data_path)
+    final_sizes = get_fsizes(folder_paths, args.data)
     
     # Main loop
     while True:
@@ -177,7 +177,7 @@ if __name__ == '__main__':
             
             # Update folder sizes    
             initial_sizes = final_sizes
-            final_sizes = get_fsizes(folder_paths, args.data_path)
+            final_sizes = get_fsizes(folder_paths, args.data)
 
              
         except (KeyboardInterrupt, SystemExit) as exErr:
