@@ -15,6 +15,7 @@ sudo sed -i 's/#HandlePowerKey=poweroff/HandlePowerKey=ignore/g' /etc/systemd/lo
 sudo echo "RuntimeWatchdogSec=15" >> /etc/systemd/system.conf
 sudo echo "RebootWatchdogSec=2min" >> /etc/systemd/system.conf
 
+## Directory Setup
 sudo mkdir /mnt/data
 sudo echo "/dev/sda1  /mnt/data  auto  noatime,rw,nofail,noauto,x-systemd.automount" >> /etc/fstab
 
