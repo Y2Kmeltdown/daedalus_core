@@ -3,7 +3,6 @@ import datetime
 import json
 import argparse
 from pathlib import Path
-import logging
 
 from picamera2 import Picamera2
 from libcamera import controls
@@ -27,14 +26,15 @@ def snapshot(camera:Picamera2, data_path:str):
     check_request_timestamp(request, check_time)
     imgMetadata = request.get_metadata()
     imgMetadata2 = {
-        "filename":f"cam_{camera.camera_idx}_image_{timestr}.jpg",
+        "filename":f"cam_{camera.camera_idx}_image_{timestr}.png",
         "timestamp":str(ct),
         "timestamp(ns)":check_time
     }
     
     with open(f'{data_path}/cam_{camera.camera_idx}_metadata_{timestr}.json', 'w') as f:
         f.write(json.dumps([imgMetadata2, imgMetadata]))
-    request.save('main', f'{data_path}/cam_{camera.camera_idx}_image_{timestr}.jpg')
+    request.save('main', f'{data_path}/cam_{camera.camera_idx}_image_{timestr}.png')
+    print(f'snapshot saved to {data_path}/cam_{camera.camera_idx}_image_{timestr}.png', flush=True)
     request.release()
 
 def cameraControls(camera:Picamera2, jsonConfig:str):
@@ -67,13 +67,18 @@ dirname = Path(__file__).resolve().parent
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("camera", help="Camera number (for example 0 or 1)")
 parser.add_argument(
-    "--data_path",
+    "--data",
     default=str(dirname / "recordings"),
     help="Path of the directory where recordings are stored",
 )
 parser.add_argument(
+    "--backup",
+    default=str("/usr/local/daedalus/data"),
+    help="Path of the directory where recordings are backed up",
+)
+parser.add_argument(
     "--timer",
-    default=1,
+    default=10,
     type=int,
     help="Time in seconds between snapshots"
 )
@@ -82,25 +87,21 @@ parser.add_argument(
     type=str,
     help="Path to configuration json for camera properties",
 )
-parser.add_argument(
-    "--backups",
-    default=str("/usr/local/daedalus/data"),
-    help="Path of the directory where recordings are backed up",
-)
 args = parser.parse_args()
 
 if __name__ == "__main__":
-    Path(args.data_path).mkdir(parents=True, exist_ok=True)
+    Path(args.data).mkdir(parents=True, exist_ok=True)
     picam = Picamera2(int(args.camera))
-    mode = picam.sensor_modes[-1] # set camera mode to last possible mode with highest allowed exposure time (max fps is limited to 14.3fps)
-    config = picam.create_still_configuration(sensor={'output_size': mode['size']})
+    config = picam.create_still_configuration()
     picam.configure(config)
     picam.start()
     time.sleep(1)
     cameraControls(picam, args.config)
 
     time.sleep(2)
+    # snapshot(picam0, args.data_path)
 
+    # TODO UNCOMMENT THIS WHEN FINISHED TESTING
     while True:
-        snapshot(picam, args.data_path)
+        snapshot(picam, args.data)
         time.sleep(args.timer)
