@@ -60,6 +60,6 @@ sudo cp /usr/local/daedalus/config/external_watchdog.service /lib/systemd/system
 sudo chmod 644 /lib/systemd/system/external_watchdog.service
 sudo systemctl daemon-reload
 sudo systemctl enable external_watchdog.service
-## SUPERVISOR INSTALLATION
-sudo mkdir -p /etc/supervisor/conf.d
-sudo cp /usr/local/daedalus/config/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+## Reboot
+sudo reboot
