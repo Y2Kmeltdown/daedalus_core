@@ -6,6 +6,7 @@ import argparse
 import numpy as np
 from time import sleep
 import logging
+import subprocess
 
 ###############TODO REWRITE WITH SUPERVISOR CTL COMMANDS AND TICK OR CROSSES FOR EACH COMPONENT #############################
 

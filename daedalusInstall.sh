@@ -17,7 +17,7 @@ sudo echo "RebootWatchdogSec=2min" >> /etc/systemd/system.conf
 
 ## DIRECTORY SETUP
 if [ -z "${1}" ]; then
-    DAEDALUS_DIR=/mnt/data
+    DAEDALUS_DIR=/usr/local/daedalus/data
 else
     DAEDALUS_DIR=$1
     mkdir -p /usr/local/daedalus/data
