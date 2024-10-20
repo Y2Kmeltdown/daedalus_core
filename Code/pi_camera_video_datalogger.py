@@ -1,8 +1,9 @@
 import time
 import argparse
 import json
-
+import os
 from pathlib import Path
+
 from picamera2 import Picamera2
 from libcamera import controls
 from picamera2.encoders import H264Encoder, Quality
@@ -17,6 +18,11 @@ parser.add_argument(
     help="Path of the directory where recordings are stored",
 )
 parser.add_argument(
+    "--backup",
+    default=str("/mnt/data"),
+    help="Path of the directory where recordings are backed up",
+)
+parser.add_argument(
     "--vid_duration",
     default=60,
     type=int,
@@ -29,55 +35,90 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-# def record_timestamp(request):
-#     timestamp = time.strftime("%Y%m%d-%H%M%S")
-#     print(timestamp)
-
-def cameraControls(camera:Picamera2, jsonConfig:str):
+def cameraControls(camera: Picamera2, jsonConfig: str):
     if jsonConfig is not None:
-        camera.set_controls({"AfMode" : controls.AfModeEnum.Manual}) # Autofocus mode set last word to either Manual, Auto or Continuous
-        camera.set_controls({"NoiseReductionMode" : controls.draft.NoiseReductionModeEnum.Off}) # Noise Reduction Mode set last word to either Off, Fast or HighQuality
+        camera.set_controls({"AfMode": controls.AfModeEnum.Manual})
+        camera.set_controls({"NoiseReductionMode": controls.draft.NoiseReductionModeEnum.Off})
         with open(jsonConfig) as f:
-            
             settings = json.load(f)
             print(settings, flush=True)
             for setting, value in settings.items():
-                camera.set_controls({setting:value})
-            #testItem = "AnalogueGain"
-            #min_val, max_val, default_val = picam2.camera_controls[testItem]
-            #print((min_val, max_val, default_val))
-            #camera.set_controls({"NoiseReductionMode" : controls.draft.NoiseReductionModeEnum.Off}) # Noise Reduction Mode set last word to either Off, Fast or HighQuality
-            #camera.set_controls({"AeEnable" : False}) # Auto Exposure enable True or False
-            #camera.set_controls({"LensPosition" : 32}) # Lens Postion values 0 to 32 metadata reports 15 as max??? Values in meters
-            #camera.set_controls({"ExposureTime" : 10000}) # Exposure time values 0 to 220417486 metadata reports inconsistant values ranging from 12000 to 16000 when set to max value??? Values are in microseconds
-            #picam2.set_controls({"AnalogueGain" : 0}) # Analogue Gain values 1 to 16
-            #picam2.set_controls({"DigitalGain" : 0}) # According to docs don't bother messing with digital gain
-            #picam2.set_controls({"ExposureValue" : 0})
-            #picam2.set_controls({"Brightness" : 0})
-            #picam2.set_controls({"Contrast" : 16})
-            #picam2.set_controls({"Saturation" : 11})
-            #picam2.set_controls({"Sharpness" : 8})
-    
+                camera.set_controls({setting: value})
+
+def is_usb_connected(mount_point: str) -> bool:
+    """
+    Check if the USB mount point is accessible.
+    """
+    return Path(mount_point).is_dir() and os.access(mount_point, os.W_OK)
+
+def start_video_recording(camera: Picamera2, data_path: str, backup_path: str, duration: int):
+    """
+    Start video recording, saving to both primary and backup directories.
+    If the backup (USB) fails, continue recording to the primary (SD card).
+    """
+    timestr = time.strftime("%Y%m%d-%H%M%S")
+    sd_filename = Path(data_path) / f'cam_{camera.camera_idx}_vid_{timestr}.h264'
+    usb_filename = Path(backup_path) / f'cam_{camera.camera_idx}_vid_{timestr}.h264'
+
+    # Create output directories if they don't exist
+    Path(data_path).mkdir(parents=True, exist_ok=True)
+    Path(backup_path).mkdir(parents=True, exist_ok=True)
+
+    encoder_sd = H264Encoder()
+    encoder_usb = H264Encoder()
+
+    # Start recording to SD card
+    camera.start_recording(encoder_sd, str(sd_filename))
+    print(f"Recording started on SD card: {sd_filename}", flush=True)
+
+    # Attempt to start recording to USB drive
+    usb_recording = False
+    if is_usb_connected(backup_path):
+        try:
+            camera.start_recording(encoder_usb, str(usb_filename))
+            usb_recording = True
+            print(f"Recording started on USB drive: {usb_filename}", flush=True)
+        except Exception as e:
+            print(f"Error starting recording on USB drive: {e}", flush=True)
+    else:
+        print("USB drive not connected. Recording only to SD card.", flush=True)
+
+    start_time = time.time()
+
+    try:
+        while time.time() - start_time < duration:
+            time.sleep(0.1)
+            # Check if USB is disconnected during recording
+            if usb_recording and not is_usb_connected(backup_path):
+                try:
+                    camera.stop_recording(encoder_usb)
+                    usb_recording = False
+                    print(f"USB disconnected. Stopped recording on USB drive: {usb_filename}", flush=True)
+                except Exception as e:
+                    print(f"Error stopping recording on USB drive: {e}", flush=True)
+                    usb_recording = False
+    finally:
+        # Stop recording on SD card
+        try:
+            camera.stop_recording(encoder_sd)
+            print(f"Recording stopped on SD card: {sd_filename}", flush=True)
+        except Exception as e:
+            print(f"Error stopping recording on SD card: {e}", flush=True)
+
+        # Stop recording on USB if still recording
+        if usb_recording:
+            try:
+                camera.stop_recording(encoder_usb)
+                print(f"Recording stopped on USB drive: {usb_filename}", flush=True)
+            except Exception as e:
+                print(f"Error stopping recording on USB drive: {e}", flush=True)
 
 if __name__ == "__main__":
-    Path(args.data).mkdir(parents=True, exist_ok=True)
-
     picam = Picamera2(int(args.camera))
-    # config = picam.create_video_configuration(controls={"FrameDurationLimits": (40000, 100000)})
     picam.configure("video")
-    # picam.pre_callback = record_timestamp
     picam.start()
     time.sleep(1)
     cameraControls(picam, args.config)
 
-    encoder = H264Encoder()
-
     while True:
-        timestr = time.strftime("%Y%m%d-%H%M%S")
-        output = f'{args.data}/cam_{picam.camera_idx}_vid_{timestr}'
-
-        picam.start_encoder(encoder, f'{output}.h264',quality=Quality.HIGH)
-        time.sleep(args.vid_duration)
-        picam.stop_encoder()
-
-    picam.stop()
+        start_video_recording(picam, args.data, args.backup, args.vid_duration)
