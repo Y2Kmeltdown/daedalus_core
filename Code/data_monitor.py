@@ -6,16 +6,6 @@ import time
 import subprocess
 import re
 
-###############TODO REWRITE WITH SUPERVISOR CTL COMMANDS AND TICK OR CROSSES FOR EACH COMPONENT #############################
-tick = "✓"
-cross = "✗"
-#"o_l_e_d                          RUNNING   pid 831, uptime 0:06:39"
-
-
-
-
-
-    
 class supervisorObject:
     sizeDelta = 0
     displayed = False
@@ -36,14 +26,19 @@ class supervisorObject:
 
     def getStatus(self):
         #re.findall(r'[\w:]+', text)
-        statusData = subprocess.run(f"sudo supervisorctl status {self.name}")
-        if "RUNNING" in statusData:
-            self.status = True
-        elif "STARTING" in statusData:
-            self.status = False
-        elif "BACKOFF" in statusData:
-            self.status = False
-        elif "STOPPED" in statusData:
+        try:
+            statusData = subprocess.run(f"sudo supervisorctl status {self.name}")
+            if "RUNNING" in statusData:
+                self.status = True
+            elif "STARTING" in statusData:
+                self.status = False
+            elif "BACKOFF" in statusData:
+                self.status = False
+            elif "STOPPED" in statusData:
+                self.status = False
+            else:
+                self.status = False
+        except:
             self.status = False
 
         return self.status
@@ -115,7 +110,7 @@ if __name__ == '__main__':
     myOLED.begin()
     run_display("Daedalus OLED Displayinitialising...", myOLED)
 
-    with open("Config/supervisord.conf", "r") as config:
+    with open("../config/supervisord.conf", "r") as config:
         configString = "".join(config.readlines())
 
     programs = re.findall(r'\[program:[\s\S]*?\r?\n\r?\n', configString)
