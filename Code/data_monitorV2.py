@@ -24,7 +24,7 @@ class supervisorObject:
         #self.update_time = time.monotonic_ns()
 
     def getStatus(self):
-        #subprocess run supervisor ctl
+        #subprocess.run(f"supervisorctl status {self.name}")
         #filter by name
         #If running
         #self.status = True
