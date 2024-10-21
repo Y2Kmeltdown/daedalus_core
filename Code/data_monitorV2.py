@@ -2,11 +2,11 @@ import os
 import qwiic_oled_display
 from pathlib import Path
 import sys
-import argparse
 import numpy as np
-from time import sleep
+import time
 import logging
 import subprocess
+import re
 
 ###############TODO REWRITE WITH SUPERVISOR CTL COMMANDS AND TICK OR CROSSES FOR EACH COMPONENT #############################
 tick = "✓"
@@ -16,16 +16,16 @@ class supervisorObject:
     size_delta = 0
 
 
-    def __init__(self, name, data_location):
-        self.name = name
-        self.location = data_location
-        #self.shorthand = getFirstLetterOfEachWord(self.name)
-        #self.folder_size = get_folder_size(self.location)
-        #self.update_time = time.monotonic_ns()
+    def __init__(self, programDict:dict):
+        self.name = programDict["program"]
+        self.shorthand = "".join(re.findall(r'\b(\w)', self.name))
+        self.location = re.search(r'(?<=--data\s)[^\s]+', programDict["command"])
+        self.folder_size = get_folder_size(self.location)
+        self.update_time = time.monotonic_ns()
 
     def getStatus(self):
-        #subprocess.run(f"supervisorctl status {self.name}")
-        #filter by name
+        statusData = subprocess.run(f"sudo supervisorctl status {self.name}")
+        #status = parse(statusData)
         #If running
         #self.status = True
         #Else
@@ -85,6 +85,9 @@ def get_size_deltas(initial_sizes, final_sizes):
 
     return size_deltas, perc_deltas
 
+def getFirstLetters(text):
+    return re.findall(r'\b(\w)', text)
+
 # Function to determine the appropriate units for folder size
 def get_appropriate_byte(fsize):
     for funit in ['B', 'kB', 'MB', 'GB']:
@@ -96,22 +99,30 @@ def get_appropriate_byte(fsize):
         return fsize_str
     
 if __name__ == '__main__':
-
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-
-    parser.add_argument(
-		"--data",
-		default=str(Path.home() / 'data'),
-		help="Path of parent folder. Assumed to have folders ['evk4_horizon', 'cmos_horizon', 'imu_horizon', 'evk4_space',  'cmos_space', 'imu_space'] unless a specific path is given as an argument.",
-	)
-    args = parser.parse_args()
-
     # Initialise display
     print("Daedalus OLED Display\n")
     myOLED = qwiic_oled_display.QwiicOledDisplay()
-    sleep(1)
+    time.sleep(1)
     myOLED.begin()
     run_display("Daedalus OLED Displayinitialising...", myOLED)
+
+    with open("Config/supervisord.conf", "r") as config:
+        configString = "".join(config.readlines())
+
+    programs = re.findall(r'\[program:[\s\S]*?\r?\n\r?\n', configString)
+    programList = []
+    for program in programs:
+        programDict = {}
+        programLines = program.split("\n")
+        for num, line in enumerate(programLines):
+            if num == 0:
+                programDict["program"] = re.search(r'(?<=\[program:)[^\]]+(?=\])', programLines[0]).group()
+            elif line is not "":
+                splitLines = line.split("= ")
+                print(splitLines)
+                programDict[splitLines[0]]=splitLines[1]
+
+        programList.append(supervisorObject(programDict))  
 
     #Parse supervisor.conf to get info about running components and attribute a data location to each program if they have a data location
     #Generate Supervisor Objects with all the info in them as a list of objects

@@ -18,20 +18,6 @@ folder_main = Path.home() / 'data'
 folder_names = ['evk4_horizon', 'cmos_horizon', 'imu_horizon', 'evk4_space',  'cmos_space', 'imu_space']
 folder_path_alias = ['Eh', 'Ch', 'Ih', 'Es', 'Cs', 'Is']
 
-class supervisorObject:
-    def __init__(self, name, data_location):
-        self.name = name
-        self.location = data_location
-
-    def getStatus(self):
-        #subprocess run supervisor ctl
-        #filter by name
-        #If running
-        #self.status = True
-        #Else
-        #self.status = False
-        #return self.status
-        pass
 
 
 # Function to display a string on the OLED
