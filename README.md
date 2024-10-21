@@ -45,6 +45,13 @@ The script sets all of the required raspberry pi configuration, moves the code a
 
 After rebooting, daedalus core should start acting as a host device making it easy to connect via ethernet while in remote locations and the status of sensors should be available at `daedalus.local`
 
+### Super Fast Manual Installation
+
+If you are already connected to raspberry pi running a fresh install of raspbian lite run the following command to complete the entire process:
+```bash
+sudo apt-get update && sudo apt install git -y && git clone https://github.com/Y2Kmeltdown/daedalus_core.git && cd daedalus_core && git checkout Lightning-Box && sudo bash daedalusInstall.sh /home/$USER/data
+```
+
 ## How to use
 
 Daedalus Core is mostly designed to be a set and forget system once it is powered on and running it should start immediately collecting data but there are some methods of controlling the processes running on the raspberry pi. Daedalus core can be connected to via wifi. On boot, daedalus will load an access point named DAEDALUS which you can connect to to monitor it's function.
