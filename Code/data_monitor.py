@@ -1,23 +1,76 @@
-import os
 import qwiic_oled_display
 from pathlib import Path
 import sys
-import argparse
 import numpy as np
-from time import sleep
-import logging
+import time
 import subprocess
+import re
 
 ###############TODO REWRITE WITH SUPERVISOR CTL COMMANDS AND TICK OR CROSSES FOR EACH COMPONENT #############################
 tick = "✓"
 cross = "✗"
+#"o_l_e_d                          RUNNING   pid 831, uptime 0:06:39"
 
-switch_num = 2
-delay = 5 # seconds
-folder_main = Path.home() / 'data'
-folder_names = ['evk4_horizon', 'cmos_horizon', 'imu_horizon', 'evk4_space',  'cmos_space', 'imu_space']
-folder_path_alias = ['Eh', 'Ch', 'Ih', 'Es', 'Cs', 'Is']
 
+
+
+
+    
+class supervisorObject:
+    sizeDelta = 0
+    displayed = False
+
+
+    def __init__(self, programDict:dict):
+        self.name = programDict["program"]
+        self.shorthand = "".join(re.findall(r'\b(\w)', self.name))
+        locationTest = re.search(r'(?<=--data\s)[^\s]+', programDict["command"])
+        if locationTest is not None:
+            self.location = locationTest.group()
+        else:
+            self.location == None
+        self.folderSize = getFolderSize(self.location)
+        self.updateTime = time.monotonic_ns()
+        self._objectInformation = programDict
+        self.getStatus()
+
+    def getStatus(self):
+        #re.findall(r'[\w:]+', text)
+        statusData = subprocess.run(f"sudo supervisorctl status {self.name}")
+        if "RUNNING" in statusData:
+            self.status = True
+        elif "STARTING" in statusData:
+            self.status = False
+        elif "BACKOFF" in statusData:
+            self.status = False
+        elif "STOPPED" in statusData:
+            self.status = False
+
+        return self.status
+    
+    def getSizeDelta(self):
+        oldFolderSize = self.folderSize
+        oldTime = self.update_time
+        currentFolderSize = getFolderSize(Path(self.location))
+        currentTime = time.monotonic_ns()
+        sizeDelta = ((currentFolderSize-oldFolderSize)/((currentTime-oldTime)/1000000000))
+        self.sizeDelta=sizeDelta
+        self.folderSize = currentFolderSize
+        self.updateTime = currentTime
+        return sizeDelta
+
+    def generateProgramString(self):
+        status = self.getStatus()
+        if status:
+            statusString = tick
+        else:
+            statusString = cross
+        
+        sizeDelta = self.getSizeDelta()
+
+        sizeString = get_appropriate_byte(sizeDelta)
+
+        return f"{statusString}|{self.shorthand}|{sizeString}"
 
 
 # Function to display a string on the OLED
@@ -35,53 +88,11 @@ def run_display(display_string, myOLED):
     print(display_string, flush=True)
     myOLED.display()
 
-# Function to get the folder size of a single folder
-def get_folder_size(folder_path):
-    total_size = 0.0
-    for dirpath, dirnames, filenames in os.walk(folder_path):
-        for filename in filenames:
-            file_path = os.path.join(dirpath, filename)
-            if os.path.isfile(file_path):
-                total_size += os.path.getsize(file_path)
-    return np.max([0.1,total_size]) # Prevent zero error by setting minimum file size
+def getFolderSize(folder:Path):
+    return sum(f.stat().st_size for f in folder.glob('**/*') if f.is_file())
 
-# Function to get paths of folders to check size of
-def get_folder_paths(args_dict):
-    folder_paths = []
-    for folder in folder_names:
-        main_dir = args_dict['data']
-        folder_path = os.path.join(main_dir, folder)
-        folder_paths.append(folder_path)
-
-    # Check no path has been overwritten
-    for i, alias in enumerate(folder_path_alias):
-        if args_dict[alias] is not None:
-            folder_paths[i] = args_dict[alias]
-    
-    return folder_paths
-
-# Function to get the array of folder sizes 
-def get_fsizes(folder_paths, main_dir):
-    fsizes = []
-    for folder in folder_paths:
-        fsize = get_folder_size(f'{folder}')
-        fsizes.append(fsize)
-    return fsizes
-
-# Function to get the diff in file size
-def get_size_deltas(initial_sizes, final_sizes):
-    size_deltas = []
-    perc_deltas = []
-    for initial_size, final_size in zip(initial_sizes, final_sizes):
-        size_delta = np.round((final_size - initial_size), decimals=1)
-        perc_delta = np.round(size_delta/initial_size*100, decimals=1)
-        
-        size_delta_str = get_appropriate_byte(size_delta)
-        
-        size_deltas.append(size_delta_str)
-        perc_deltas.append(perc_delta)
-
-    return size_deltas, perc_deltas
+def getFirstLetters(text):
+    return re.findall(r'\b(\w)', text)
 
 # Function to determine the appropriate units for folder size
 def get_appropriate_byte(fsize):
@@ -90,104 +101,58 @@ def get_appropriate_byte(fsize):
             fsize = np.round(fsize/1024, decimals=1)
             continue
             
-        fsize_str = f'{fsize}{funit}'
+        fsize_str = f'{fsize}{funit}/s'
         return fsize_str
-
-# Function that gets change in folder size and formats strings for OLED display
-def make_folder_strings(initial_sizes, final_sizes):
-    size_deltas, perc_deltas = get_size_deltas(initial_sizes, final_sizes)
     
-    # Add space buffers to create new lines (21 characters for each line of OLED)
-    display_string_horizon = '{: <21}'.format('Horizon data')
-    display_string_space = '{: <21}'.format('Space data')
-    for i, folder, size, perc in zip(range(len(folder_path_alias)), folder_path_alias, size_deltas, perc_deltas):
-        folder_string = f'{folder} {size}|{perc}%'
-        folder_string = '{: <21}'.format(folder_string)
-        
-        if i < 3:
-            display_string_horizon += folder_string
-        else:
-            display_string_space += folder_string
-    
-    return display_string_horizon, display_string_space
-
-
-
-
 if __name__ == '__main__':
-
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-
-    parser.add_argument(
-		"--data",
-		default=str(Path.home() / 'data'),
-		help="Path of parent folder. Assumed to have folders ['evk4_horizon', 'cmos_horizon', 'imu_horizon', 'evk4_space',  'cmos_space', 'imu_space'] unless a specific path is given as an argument.",
-	)
-    parser.add_argument(
-		"--Eh",
-		help="Full path to folder containing the horizon event camera data.",
-	)
-    parser.add_argument(
-		"--Ch",
-		help="Full path to folder containing the horizon cmos data.",
-	)
-    parser.add_argument(
-		"--Ih",
-		help="Full path to folder containing the horizon IMU data.",
-	)
-    parser.add_argument(
-		"--Es",
-		help="Full path to folder containing the space event camera data.",
-	)
-    parser.add_argument(
-		"--Cs",
-		help="Full path to folder containing the space cmos data.",
-	)
-    parser.add_argument(
-		"--Is",
-		help="Full path to folder containing the space IMU data.",
-	)
-
-    args = parser.parse_args()
-    folder_paths = get_folder_paths(vars(args))
-    print(folder_paths)
-    
     # Initialise display
+    tick = "✓"
+    cross = "✗"
+    pageSize = 4
     print("Daedalus OLED Display\n")
     myOLED = qwiic_oled_display.QwiicOledDisplay()
-    sleep(1)
+    time.sleep(1)
     myOLED.begin()
     run_display("Daedalus OLED Displayinitialising...", myOLED)
-    
-    initial_sizes = get_fsizes(folder_paths, args.data)
-    sleep(delay)
-    final_sizes = get_fsizes(folder_paths, args.data)
-    
-    # Main loop
+
+    with open("Config/supervisord.conf", "r") as config:
+        configString = "".join(config.readlines())
+
+    programs = re.findall(r'\[program:[\s\S]*?\r?\n\r?\n', configString)
+    programList = []
+    for program in programs:
+        programDict = {}
+        programLines = program.split("\n")
+        for num, line in enumerate(programLines):
+            if num == 0:
+                programDict["program"] = re.search(r'(?<=\[program:)[^\]]+(?=\])', programLines[0]).group()
+            elif line != "":
+                splitLines = line.split("= ")
+                print(splitLines)
+                programDict[splitLines[0]]=splitLines[1]
+
+        programList.append(supervisorObject(programDict))  
+
+    numberOfPages = len(programList)//pageSize
+    #Parse supervisor.conf to get info about running components and attribute a data location to each program if they have a data location
+    #Generate Supervisor Objects with all the info in them as a list of objects
+    #Generate appropriate number of pages on the OLED for the programs that generate data
+
     while True:
-        curr_display_string = ''
-        try:
-            # Get folder deltas and make string for display
-            display_string_h, display_string_s = make_folder_strings(initial_sizes, final_sizes)
-            
-            # Switch display between horizon and space folder sizes 
-            for i in range(switch_num):
-                if curr_display_string == display_string_h:
-                    curr_display_string = display_string_s
+        for page in range(numberOfPages):
+            pageUsage = 0
+            programStrings = []
+            for supervisorObject in programList:
+                if pageUsage < pageSize:
+                    if supervisorObject.location is not None and supervisorObject.displayed == False:
+                        programStrings.append(supervisorObject.generateProgramString())
+                        pageUsage+=1
+                        supervisorObject.displayed = True
                 else:
-                    curr_display_string = display_string_h
-                    
-                run_display(curr_display_string, myOLED)
-                sleep(delay/switch_num)
-            
-            # Update folder sizes    
-            initial_sizes = final_sizes
-            final_sizes = get_fsizes(folder_paths, args.data)
-
-             
-        except (KeyboardInterrupt, SystemExit) as exErr:
-            print("\Exiting fsize delta script.")
-            sys.exit(0)
-
-    
-
+                    break
+            oled_string = "\n".join(programStrings)
+            run_display(oled_string, myOLED)
+            time.sleep(3)
+        for supervisorObject in programList:
+            supervisorObject.displayed = False
+    #           
