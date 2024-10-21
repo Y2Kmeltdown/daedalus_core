@@ -45,7 +45,7 @@ class supervisorObject:
     
     def getSizeDelta(self):
         oldFolderSize = self.folderSize
-        oldTime = self.update_time
+        oldTime = self.updateTime
         currentFolderSize = getFolderSize(self.location)
         currentTime = time.monotonic_ns()
         sizeDelta = ((currentFolderSize-oldFolderSize)/((currentTime-oldTime)/1000000000))
