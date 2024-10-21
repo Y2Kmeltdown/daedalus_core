@@ -19,7 +19,7 @@ class supervisorObject:
             self.location = Path(locationTest.group())
             self.folderSize = getFolderSize(self.location)
         else:
-            self.location == None
+            self.location = None
         self.updateTime = time.monotonic_ns()
         self._objectInformation = programDict
         self.getStatus()
@@ -149,5 +149,4 @@ if __name__ == '__main__':
             run_display(oled_string, myOLED)
             time.sleep(3)
         for supervisorObject in programList:
-            supervisorObject.displayed = False
-    #           
+            supervisorObject.displayed = False         
