@@ -16,10 +16,10 @@ class supervisorObject:
         self.shorthand = "".join(re.findall(r'\b(\w)', self.name))
         locationTest = re.search(r'(?<=--data\s)[^\s]+', programDict["command"])
         if locationTest is not None:
-            self.location = locationTest.group()
+            self.location = Path(locationTest.group())
+            self.folderSize = getFolderSize(self.location)
         else:
             self.location == None
-        self.folderSize = getFolderSize(self.location)
         self.updateTime = time.monotonic_ns()
         self._objectInformation = programDict
         self.getStatus()
@@ -46,7 +46,7 @@ class supervisorObject:
     def getSizeDelta(self):
         oldFolderSize = self.folderSize
         oldTime = self.update_time
-        currentFolderSize = getFolderSize(Path(self.location))
+        currentFolderSize = getFolderSize(self.location)
         currentTime = time.monotonic_ns()
         sizeDelta = ((currentFolderSize-oldFolderSize)/((currentTime-oldTime)/1000000000))
         self.sizeDelta=sizeDelta
