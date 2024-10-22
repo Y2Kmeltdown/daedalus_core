@@ -13,7 +13,7 @@ class supervisorObject:
 
     def __init__(self, programDict:dict):
         self.name = programDict["program"]
-        self.shorthand = "".join(re.findall(r'\b(\w)', self.name))
+        self.shorthand = "".join(re.findall(r'(?:^|_)(\w)', self.name))
         locationTest = re.search(r'(?<=--data\s)[^\s]+', programDict["command"])
         if locationTest is not None:
             self.location = Path(locationTest.group())
@@ -57,7 +57,7 @@ class supervisorObject:
     def generateProgramString(self):
         status = self.getStatus()
         if status:
-            statusString = tick
+            statusString = circle
         else:
             statusString = cross
         
@@ -65,7 +65,7 @@ class supervisorObject:
 
         sizeString = get_appropriate_byte(sizeDelta)
 
-        return f"{statusString}|{self.shorthand}|{sizeString}"
+        return "{: <21}".format(f"{statusString} | {self.shorthand} | {sizeString}")
 
 
 # Function to display a string on the OLED
@@ -86,8 +86,6 @@ def run_display(display_string, myOLED):
 def getFolderSize(folder:Path):
     return sum(f.stat().st_size for f in folder.glob('**/*') if f.is_file())
 
-def getFirstLetters(text):
-    return re.findall(r'\b(\w)', text)
 
 # Function to determine the appropriate units for folder size
 def get_appropriate_byte(fsize):
@@ -96,13 +94,15 @@ def get_appropriate_byte(fsize):
             fsize = np.round(fsize/1024, decimals=1)
             continue
             
-        fsize_str = f'{fsize}{funit}/s'
+        fsize_str = f'{fsize} {funit}/s'
         return fsize_str
     
 if __name__ == '__main__':
     # Initialise display
-    tick = "✓"
-    cross = "✗"
+    #tick = "✓"
+    #cross = "✗"
+    circle = "O"
+    cross = "X"
     pageSize = 4
     print("Daedalus OLED Display\n")
     myOLED = qwiic_oled_display.QwiicOledDisplay()
@@ -123,7 +123,6 @@ if __name__ == '__main__':
                 programDict["program"] = re.search(r'(?<=\[program:)[^\]]+(?=\])', programLines[0]).group()
             elif line != "":
                 splitLines = line.split("= ")
-                print(splitLines)
                 programDict[splitLines[0]]=splitLines[1]
 
         programList.append(supervisorObject(programDict))  
@@ -145,7 +144,7 @@ if __name__ == '__main__':
                         supervisorObject.displayed = True
                 else:
                     break
-            oled_string = "\n".join(programStrings)
+            oled_string = "".join(programStrings)
             run_display(oled_string, myOLED)
             time.sleep(3)
         for supervisorObject in programList:
