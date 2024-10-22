@@ -3,7 +3,7 @@ from pathlib import Path
 import sys
 import numpy as np
 import time
-import subprocess
+import os
 import re
 
 class supervisorObject:
@@ -27,7 +27,7 @@ class supervisorObject:
     def getStatus(self):
         #re.findall(r'[\w:]+', text)
         try:
-            statusData = subprocess.run(f"sudo supervisorctl status {self.name}")
+            statusData = os.popen(f"sudo supervisorctl status {self.name}").read()
             if "RUNNING" in statusData:
                 self.status = True
             elif "STARTING" in statusData:
