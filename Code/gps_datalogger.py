@@ -7,11 +7,11 @@ import os
 
 def checksumValidator(packet:bytearray) -> bool:
   checksum = 0
-  for byte in packet[1:-5]:
+  for byte in packet[1:-4]:
     checksum ^= byte
 
-  highNibbleAscii, lowNibbleAscii = ord(hex((checksum >> 4) & 0xf)[-1]).to_bytes(1, 'big'), ord(hex((checksum) & 0xf)[-1]).to_bytes(1, 'big')
-  highInput, lowInput = packet[-4], packet[-3]
+  highNibbleAscii, lowNibbleAscii = ord(hex((checksum >> 4) & 0xf)[-1].capitalize()).to_bytes(1,'big'), ord(hex((checksum) & 0xf)[-1].capitalize()).to_bytes(1,'big')
+  highInput, lowInput = packet[-3], packet[-2]
 
   if highNibbleAscii == highInput.to_bytes(1,'big') and lowNibbleAscii == lowInput.to_bytes(1,'big'):
     return True
@@ -96,7 +96,6 @@ def run(serialPort, dir_path):
   start_time = datetime.now().strftime("%Y-%d-%m_%H-%M-%S")
   filename = "gps-data_" + start_time + ".csv"
   
-  #######################TODO Make it open a second location###########################
   with open(os.path.join(dir_path, filename), 'w', newline='') as csvfile:
     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
     writer.writeheader()
@@ -105,13 +104,11 @@ def run(serialPort, dir_path):
       while True:
         try: 
           gps_data = port.read(65535)
+          nmeaPackets = gps_data.split(b"\n")
+          for packet in nmeaPackets:
+            if packet != b"":
+              packet, status, repair = packetRepairer(packet)
 
-          print(gps_data)
-
-          ###################TODO WRITE GPS COLLECTION SCRIPT##########################
-          #writer.writerow(GPS_data)
-          #print(GPS_data, flush=True)
-          #############################################################################          
 
         except (ValueError, IOError) as err:
           print(err)
