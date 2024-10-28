@@ -71,10 +71,6 @@ def save_to_paths(primary_path, backup_path, data, mode='wb'):
     except Exception as e:
         print(f"Error saving to backup path {backup_path}: {e}", file=sys.stderr)
 
-    # If both fail, raise an error
-    if not success_primary and not success_backup:
-        print("Failed to save data to both primary and backup paths.", file=sys.stderr)
-
 def record_5Mins():
     output_directory = pathlib.Path(args.data).resolve() / f"evk4_{args.serial}"
     backup_directory = pathlib.Path(args.backup).resolve() / f"evk4_{args.serial}"
@@ -89,8 +85,8 @@ def record_5Mins():
     name = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
     with nd.open(raw=True, serial=args.serial) as device:
-        print(f"Successfully started EVK4 {args.serial}")
-        print(f"Started Recording to {output_directory / (name + '_events.raw')}")
+        print(f"Successfully started EVK4 at serial: {args.serial}")
+        print(f"Started Recording to SD: {output_directory / (name + '_events.raw')}")
 
         # Save the camera biases (metadata)
         metadata = {
@@ -120,6 +116,7 @@ def record_5Mins():
 
         # Attempt to open backup files
         try:
+            print(f"Started Recording to USB: {events_backup_path}")
             events_backup = open(events_backup_path, "ab")
             samples_backup = open(samples_backup_path, "ab")
             measurements_backup = open(measurements_backup_path, "ab")
@@ -135,7 +132,6 @@ def record_5Mins():
 
         try:
             for status, packet in device:
-
                 events_primary.write(packet)
                 if backup_files_open:
                     try:
@@ -215,8 +211,6 @@ def record_5Mins():
                 events_backup.close()
                 samples_backup.close()
                 measurements_backup.close()
-
-            print("All files have been closed.")
 
 if __name__ == "__main__":
     while True:

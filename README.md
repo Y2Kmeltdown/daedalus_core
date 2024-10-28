@@ -25,6 +25,7 @@ This branch is maintained by: Sami Arja
 - [How it works](#how-it-works)
 - [Modifying Daedalus Core](#modifying-daedalus-core)
 - [Appendix](#appendix)
+  - [Setup a new USB drive](#setup-a-new-usb-drive)
   - [Installing Bonjour](#installing-bonjour)
   - [Using Windows as a host device](#using-windows-as-a-host-device)
     - [Automatic Method](#automatic-method)
