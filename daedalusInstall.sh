@@ -78,8 +78,9 @@ sudo apt-get install -y \
     libclang-dev \
     clang
 
-sudo git clone https://github.com/neuromorphicsystems/gps-imu.git /usr/local/daedalus/code/GPS
+sudo git clone https://github.com/Y2Kmeltdown/gps-imu.git /usr/local/daedalus/code/GPS
 cd /usr/local/daedalus/code/GPS
+git checkout Raspberry-Pi-Fixes
 sudo touch gps.nmea
 cd ~/daedalus_core
 
@@ -93,12 +94,6 @@ sudo apt-get install -y \
 ## NETWORK SET UP AND FINALISATION
 echo -e "Daedalus Core Installed successfully to view running processes visit http://daedalus.local or enter the command supervisorctl status\nReconfiguring eth0 to host device and rebooting.\nPlease Wait."
 sleep 10
-nmcli con delete DAEDALUS_ETH
-nmcli con add type ethernet ifname eth0 con-name DAEDALUS_ETH
-nmcli con modify DAEDALUS_ETH ipv4.method shared ipv4.address 192.168.5.1/24
-nmcli con modify DAEDALUS_ETH ipv6.method disabled
-nmcli con modify DAEDALUS_ETH connection.autoconnect yes
-nmcli con up DAEDALUS_ETH
 
 sudo chmod -R 777 $DAEDALUS_DIR
 
