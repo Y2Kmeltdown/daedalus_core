@@ -56,7 +56,7 @@ def record_5Mins():
 
     with nd.open(serial=args.serial) as device:#configuration=configuration
         print(f"Successfully started EVK4 {args.serial}")
-        print(f"Started Recording {output_directory}/{name}_events.raw")
+        print(f"Started Recording {output_directory}/{name}_events.es")
 
         # save the camera biases
         with open(output_directory / f"{name}_metadata.json", "w") as json_file:
@@ -101,11 +101,11 @@ def record_5Mins():
                 if "dvs_events" in packet:
                     # packet["dvs_events"] is a structured numpy array
                     # with dtype [("t", "<u8"), ("x", "<u2"), ("y", "<u2"), ("on", "?")])
-                    events.write(packet)
+                    events.write(packet["dvs_events"])
                 if "trigger_events" in packet:
                     # packet["trigger_events"] is a structured numpy array
                     # with dtype [("t", "<u8"), ("id, "<u1"), ("rising", "?")])
-                    np.savetxt(triggers, packet)
+                    np.savetxt(triggers, packet["trigger_events"])
                 #events.write(packet)
                 events_cursor += len(packet)
 
@@ -127,7 +127,6 @@ def record_5Mins():
                         pass
                     next_measurement = time.monotonic_ns() + measurement_interval
                 if time.monotonic_ns() >= next_flush:
-                    events.flush()
                     samples.flush()
                     measurements.flush()
                     next_flush = time.monotonic_ns() + flush_interval
