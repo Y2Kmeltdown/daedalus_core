@@ -131,7 +131,8 @@ if __name__ == '__main__':
     help="Path of the directory where recordings are backed up",
   )
   args = parser.parse_args()
-  #/dev/ttyAMA0
+  #/dev/ttyAMA0 for serial
+  #/dev/ttyACM0 for USB
   
   try:
     run(args.port, args.data)
