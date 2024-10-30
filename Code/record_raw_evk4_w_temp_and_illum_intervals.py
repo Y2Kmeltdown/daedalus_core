@@ -5,6 +5,8 @@ import pathlib
 import json
 import time
 
+import numpy as np
+import event_stream
 import neuromorphic_drivers as nd
 
 dirname = pathlib.Path(__file__).resolve().parent
@@ -52,7 +54,7 @@ def record_5Mins():
         .replace(":", "-")
     )
 
-    with nd.open(raw=True, serial=args.serial) as device:#configuration=configuration
+    with nd.open(serial=args.serial) as device:#configuration=configuration
         print(f"Successfully started EVK4 {args.serial}")
         print(f"Started Recording {output_directory}/{name}_events.raw")
 
@@ -72,16 +74,20 @@ def record_5Mins():
 
         # save the events, samples (timings), and measurements (illuminance and temperature)
         events_cursor = 0
-        with open(
-            output_directory / f"{name}_events.raw",
-            "wb",
+        with event_stream.Encoder(
+            output_directory / f"{name}_events.es", 
+            'dvs', 
+            1280, 720
         ) as events, open(
             output_directory / f"{name}_samples.jsonl",
             "wb",
         ) as samples, open(
             output_directory / f"{name}_measurements.jsonl",
             "wb",
-        ) as measurements:
+        ) as measurements, open(
+            output_directory / f"{name}_triggers.txt",
+            "a",
+        ) as triggers:
             counter = 0
             start_time = time.monotonic_ns()
             next_flush = start_time + flush_interval
@@ -91,9 +97,18 @@ def record_5Mins():
                 if counter == 500:
                     #print(f"Saving Event Data, Packet Size:{len(packet)}", flush=True) 
                     counter = 0
-                    
-                events.write(packet)
+                
+                if "dvs_events" in packet:
+                    # packet["dvs_events"] is a structured numpy array
+                    # with dtype [("t", "<u8"), ("x", "<u2"), ("y", "<u2"), ("on", "?")])
+                    events.write(packet)
+                if "trigger_events" in packet:
+                    # packet["trigger_events"] is a structured numpy array
+                    # with dtype [("t", "<u8"), ("id, "<u1"), ("rising", "?")])
+                    np.savetxt(triggers, packet)
+                #events.write(packet)
                 events_cursor += len(packet)
+
                 try:
                     status_dict = dataclasses.asdict(status)
                     status_dict["events_cursor"] = events_cursor
