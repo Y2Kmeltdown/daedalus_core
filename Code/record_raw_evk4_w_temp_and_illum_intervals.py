@@ -105,7 +105,7 @@ def record_5Mins():
                 if "trigger_events" in packet:
                     # packet["trigger_events"] is a structured numpy array
                     # with dtype [("t", "<u8"), ("id, "<u1"), ("rising", "?")])
-                    np.savetxt(triggers, packet["trigger_events"])
+                    np.savetxt(triggers, packet["trigger_events"], ["%u","%u","%u"])
                 #events.write(packet)
                 events_cursor += len(packet)
 
