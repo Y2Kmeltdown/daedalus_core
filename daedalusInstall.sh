@@ -78,10 +78,9 @@ sudo apt-get install -y \
     libclang-dev \
     clang
 
-sudo git clone https://github.com/Y2Kmeltdown/gps-imu.git /usr/local/daedalus/code/GPS
+sudo git clone https://github.com/neuromorphicsystems/gps-imu.git /usr/local/daedalus/code/GPS
 cd /usr/local/daedalus/code/GPS
-git checkout Raspberry-Pi-Fixes
-sudo touch gps.nmea
+cargo build --release
 cd ~/daedalus_core
 
 ## SUPERVISOR INSTALLATION
