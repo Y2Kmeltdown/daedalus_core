@@ -5,6 +5,7 @@ import numpy as np
 import time
 import os
 import re
+import serial
 
 class supervisorObject:
     sizeDelta = 0
