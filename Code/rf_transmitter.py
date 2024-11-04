@@ -11,6 +11,11 @@ from data_monitor import supervisorObject
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("port", help="Serial Port for GPS", type=str)
+    parser.add_argument(
+        "--data",
+        default="/usr/local/daedalus/data",
+        help="Path of the directory where recordings are stored",
+    )
     args = parser.parse_args()
     
 

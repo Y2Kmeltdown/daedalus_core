@@ -7,6 +7,7 @@ import os
 import re
 import argparse
 import serial
+from threading import Thread
 
 class supervisorObject:
     sizeDelta = 0
@@ -82,63 +83,30 @@ class supervisorObject:
 
         return "{: <21}".format(f"{statusString} | {self.shorthand} | {sizeString}")
 
+def oled_thread_func(programList):
 
-# Function to display a string on the OLED
-def run_display(display_string, myOLED):
+    # Function to display a string on the OLED
+    def run_display(display_string, myOLED):
 
-    if myOLED.is_connected() == False:
-        print("The Qwiic OLED Display isn't connected to the system. Please check your connection", \
-            file=sys.stderr)
-        return
-    
-    myOLED.begin()
-    # ~ myOLED.clear(myOLED.ALL)
-    myOLED.clear(myOLED.PAGE)  #  Clear the display's buffer
-    myOLED.print(display_string)
-    print(display_string, flush=True)
-    myOLED.display()
+        if myOLED.is_connected() == False:
+            print("The Qwiic OLED Display isn't connected to the system. Please check your connection", \
+                file=sys.stderr)
+            return
+        
+        myOLED.begin()
+        # ~ myOLED.clear(myOLED.ALL)
+        myOLED.clear(myOLED.PAGE)  #  Clear the display's buffer
+        myOLED.print(display_string)
+        print(display_string, flush=True)
+        myOLED.display()
 
-    
-if __name__ == '__main__':
-    # Initialise display
-    #tick = "✓"
-    #cross = "✗"
-
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("port", help="Serial Port for GPS", type=str)
-    args = parser.parse_args()
-    port = serial.Serial(args.port, baudrate=57600, timeout=1)
-
-    circle = "O"
-    cross = "X"
     pageSize = 4
     print("Daedalus OLED Display\n")
     myOLED = qwiic_oled_display.QwiicOledDisplay()
     time.sleep(1)
     myOLED.begin()
-    run_display("Daedalus OLED Displayinitialising...", myOLED)
-
-    with open("../config/supervisord.conf", "r") as config:
-        configString = "".join(config.readlines())
-
-    programs = re.findall(r'\[program:[\s\S]*?\r?\n\r?\n', configString)
-    programList = []
-    for program in programs:
-        programDict = {}
-        programLines = program.split("\n")
-        for num, line in enumerate(programLines):
-            if num == 0:
-                programDict["program"] = re.search(r'(?<=\[program:)[^\]]+(?=\])', programLines[0]).group()
-            elif line != "":
-                splitLines = line.split("= ")
-                programDict[splitLines[0]]=splitLines[1]
-
-        programList.append(supervisorObject(programDict))  
-
+    run_display("Daedalus OLED Display initialising...", myOLED)
     numberOfPages = len(programList)//pageSize
-    #Parse supervisor.conf to get info about running components and attribute a data location to each program if they have a data location
-    #Generate Supervisor Objects with all the info in them as a list of objects
-    #Generate appropriate number of pages on the OLED for the programs that generate data
 
     while True:
         for page in range(numberOfPages):
@@ -156,4 +124,71 @@ if __name__ == '__main__':
             run_display(oled_string, myOLED)
             time.sleep(3)
         for supervisorObject in programList:
-            supervisorObject.displayed = False         
+            supervisorObject.displayed = False  
+    
+
+def transmitter_thread_func():
+    pass
+
+    
+if __name__ == '__main__':
+    # Initialise display
+    #tick = "✓"
+    #cross = "✗"
+
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("port", help="Serial Port for GPS", type=str)
+    args = parser.parse_args()
+    port = serial.Serial(args.port, baudrate=57600, timeout=1)
+
+    circle = "O"
+    cross = "X"
+    # pageSize = 4
+    # print("Daedalus OLED Display\n")
+    # myOLED = qwiic_oled_display.QwiicOledDisplay()
+    # time.sleep(1)
+    # myOLED.begin()
+    # run_display("Daedalus OLED Display initialising...", myOLED)
+
+    with open("../config/supervisord.conf", "r") as config:
+        configString = "".join(config.readlines())
+
+    programs = re.findall(r'\[program:[\s\S]*?\r?\n\r?\n', configString)
+    programList = []
+    for program in programs:
+        programDict = {}
+        programLines = program.split("\n")
+        for num, line in enumerate(programLines):
+            if num == 0:
+                programDict["program"] = re.search(r'(?<=\[program:)[^\]]+(?=\])', programLines[0]).group()
+            elif line != "":
+                splitLines = line.split("= ")
+                programDict[splitLines[0]]=splitLines[1]
+
+        programList.append(supervisorObject(programDict))
+
+    oledThread = Thread(target=oled_thread_func, args = (programList,), daemon=True)
+    oledThread.start()
+
+    # numberOfPages = len(programList)//pageSize
+    #Parse supervisor.conf to get info about running components and attribute a data location to each program if they have a data location
+    #Generate Supervisor Objects with all the info in them as a list of objects
+    #Generate appropriate number of pages on the OLED for the programs that generate data
+
+    # while True:
+    #     for page in range(numberOfPages):
+    #         pageUsage = 0
+    #         programStrings = []
+    #         for supervisorObject in programList:
+    #             if pageUsage < pageSize:
+    #                 if supervisorObject.location is not None and supervisorObject.displayed == False:
+    #                     programStrings.append(supervisorObject.generateProgramString())
+    #                     pageUsage+=1
+    #                     supervisorObject.displayed = True
+    #             else:
+    #                 break   
+    #         oled_string = "".join(programStrings)
+    #         run_display(oled_string, myOLED)
+    #         time.sleep(3)
+    #     for supervisorObject in programList:
+    #         supervisorObject.displayed = False         
