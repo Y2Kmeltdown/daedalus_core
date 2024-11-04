@@ -226,11 +226,13 @@ if __name__ == "__main__":
             "--data",
             default="/usr/local/daedalus/data",
             help="Path of the directory where recordings are stored",
+            type=str
         )
     parser.add_argument(
             "--backup",
             default="/mnt/data",
             help="Path of the directory where recordings are backed up",
+            type=str
         )
     args = parser.parse_args()
     ctrl_meas_WORD, ctrl_hum_WORD, config_WORD, measurement_T = atmosInit()

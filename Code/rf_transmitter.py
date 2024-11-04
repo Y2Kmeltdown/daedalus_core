@@ -22,7 +22,7 @@ if __name__ == "__main__":
     with open("../config/supervisord.conf", "r") as config:
         configString = "".join(config.readlines())
 
-    program = re.findall(r'\[program:event_camera][\s\S]*?\r?\n\r?\n', configString)
+    program = re.findall(r'\[program:event_camera][\s\S]*?\r?\n\r?\n', configString)[0]
     
     
     programDict = {}

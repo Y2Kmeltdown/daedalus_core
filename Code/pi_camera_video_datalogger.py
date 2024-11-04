@@ -22,9 +22,11 @@ parser.add_argument(
     default=str("/mnt/data"),
     help="Path of the directory where recordings are backed up",
 )
+parser.add_argument(
     "--vid_duration",
     default=60,
     type=int,
+)
 parser.add_argument(
     "--config",
     type=str,
