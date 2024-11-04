@@ -5,6 +5,7 @@ import numpy as np
 import time
 import os
 import re
+import argparse
 import serial
 
 class supervisorObject:
@@ -18,12 +19,25 @@ class supervisorObject:
         locationTest = re.search(r'(?<=--data\s)[^\s]+', programDict["command"])
         if locationTest is not None:
             self.location = Path(locationTest.group())
-            self.folderSize = getFolderSize(self.location)
+            self.folderSize = self._getFolderSize(self.location)
         else:
             self.location = None
         self.updateTime = time.monotonic_ns()
         self._objectInformation = programDict
         self.getStatus()
+
+    def _getFolderSize(folder:Path):
+        return sum(f.stat().st_size for f in folder.glob('**/*') if f.is_file())
+    
+    # Function to determine the appropriate units for folder size
+    def _get_appropriate_byte(fsize):
+        for funit in ['B', 'kB', 'MB', 'GB']:
+            if len(str(fsize)) > 4:
+                fsize = np.round(fsize/1024, decimals=1)
+                continue
+                
+            fsize_str = f'{fsize} {funit}/s'
+            return fsize_str
 
     def getStatus(self):
         #re.findall(r'[\w:]+', text)
@@ -47,7 +61,7 @@ class supervisorObject:
     def getSizeDelta(self):
         oldFolderSize = self.folderSize
         oldTime = self.updateTime
-        currentFolderSize = getFolderSize(self.location)
+        currentFolderSize = self._getFolderSize(self.location)
         currentTime = time.monotonic_ns()
         sizeDelta = ((currentFolderSize-oldFolderSize)/((currentTime-oldTime)/1000000000))
         self.sizeDelta=sizeDelta
@@ -64,7 +78,7 @@ class supervisorObject:
         
         sizeDelta = self.getSizeDelta()
 
-        sizeString = get_appropriate_byte(sizeDelta)
+        sizeString = self._get_appropriate_byte(sizeDelta)
 
         return "{: <21}".format(f"{statusString} | {self.shorthand} | {sizeString}")
 
@@ -84,24 +98,17 @@ def run_display(display_string, myOLED):
     print(display_string, flush=True)
     myOLED.display()
 
-def getFolderSize(folder:Path):
-    return sum(f.stat().st_size for f in folder.glob('**/*') if f.is_file())
-
-
-# Function to determine the appropriate units for folder size
-def get_appropriate_byte(fsize):
-    for funit in ['B', 'kB', 'MB', 'GB']:
-        if len(str(fsize)) > 4:
-            fsize = np.round(fsize/1024, decimals=1)
-            continue
-            
-        fsize_str = f'{fsize} {funit}/s'
-        return fsize_str
     
 if __name__ == '__main__':
     # Initialise display
     #tick = "✓"
     #cross = "✗"
+
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("port", help="Serial Port for GPS", type=str)
+    args = parser.parse_args()
+    port = serial.Serial(args.port, baudrate=57600, timeout=1)
+
     circle = "O"
     cross = "X"
     pageSize = 4
@@ -144,7 +151,7 @@ if __name__ == '__main__':
                         pageUsage+=1
                         supervisorObject.displayed = True
                 else:
-                    break
+                    break   
             oled_string = "".join(programStrings)
             run_display(oled_string, myOLED)
             time.sleep(3)

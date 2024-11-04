@@ -6,18 +6,18 @@ from pathlib import Path
 
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("port", help="Serial Port for GPS", type=str)
-    parser.add_argument(
+parser.add_argument("port", help="Serial Port for GPS", type=str)
+parser.add_argument(
         "--data",
         default="/usr/local/daedalus/data",
         help="Path of the directory where recordings are stored",
     )
-    parser.add_argument(
+parser.add_argument(
         "--backup",
         default="/mnt/data",
         help="Path of the directory where recordings are backed up",
     )
-    args = parser.parse_args()
+args = parser.parse_args()
     
     
 def checksumValidator(packet: bytearray) -> bool:
