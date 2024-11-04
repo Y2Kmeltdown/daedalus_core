@@ -74,11 +74,7 @@ def snapshot(camera: Picamera2, data_path: str, backup_path: str):
     request = camera.wait(job)
     check_request_timestamp(request, check_time)
 
-    imgMetadata = {
         "filename": f"cam_{camera.camera_idx}_image_{timestr}.png",
-        "timestamp": str(ct),
-        "timestamp(ns)": check_time
-    }
 
     # Save snapshot to both data and backup, passing the request object
     save_snapshot(data_path, backup_path, f"cam_{camera.camera_idx}_image_{timestr}", imgMetadata, request)
