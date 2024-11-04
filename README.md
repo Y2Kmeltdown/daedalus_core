@@ -234,7 +234,7 @@ After rebooting, daedalus core should start acting as a host device making it ea
 If you are already connected to raspberry pi running a fresh install of raspbian lite run the following command to complete the entire process:
 
 ```bash
-sudo apt-get update && sudo apt install git -y && git clone https://github.com/Y2Kmeltdown/daedalus_core.git && cd daedalus_core && git checkout Lightning-Box && sudo bash daedalusInstall.sh /home/$USER/data
+sudo apt-get update && sudo apt install git -y && git clone https://github.com/Y2Kmeltdown/daedalus_core.git && cd daedalus_core && git checkout daedalus4 && sudo bash daedalusInstall.sh /home/$USER/data
 ```
 
 ### Developer Install
@@ -242,7 +242,7 @@ sudo apt-get update && sudo apt install git -y && git clone https://github.com/Y
 If you are developing daedalus core and need to test you can use the following command to install all dependencies onto the pi and set up the configuration without making any changes to the network interface or running scripts in supervisor.
 
 ```bash
-sudo apt-get update && sudo apt install git -y && git clone https://github.com/Y2Kmeltdown/daedalus_core.git && cd daedalus_core && git checkout Lightning-Box && sudo bash devScript.sh
+sudo apt-get update && sudo apt install git -y && git clone https://github.com/Y2Kmeltdown/daedalus_core.git && cd daedalus_core && git checkout daedalus4 && sudo bash devScript.sh
 ```
 
 ## How to use
