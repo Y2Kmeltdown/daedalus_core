@@ -162,6 +162,7 @@ def readAtmos(i2c_address, data_path, backup_path, ctrl_meas_WORD, ctrl_hum_WORD
                 #  perform compensation
 
                 buffer.append(f"{pressureInt},{temperatureInt},{humidityInt}")
+                print(buffer)
 
                 # Save buffer to files every 10 seconds
                 if datetime.now() - last_buffer_save >= buffer_save_interval and buffer:
