@@ -147,19 +147,19 @@ def readAtmos(i2c_address, data_path, backup_path, ctrl_meas_WORD, ctrl_hum_WORD
                 pressure = i2cbus.read_i2c_block_data(i2c_address, r_dict["press_msb_REG"], 3)
                 pressureBinary = "".join([format(val, '#010b')[2:] for val in pressure])[0:-4]
                 pressureInt = int(pressureBinary, 2)
-                #  perform compensation
+                #  TODO perform compensation
                 
                 
                 temperature = i2cbus.read_i2c_block_data(i2c_address, r_dict["temp_msb_REG"], 3)
                 temperatureBinary = "".join([format(val, '#010b')[2:] for val in temperature])[0:-4]
                 temperatureInt = int(temperatureBinary, 2)
-                #  perform compensation
+                #  TODO perform compensation
                 
 
                 humidity = i2cbus.read_i2c_block_data(i2c_address, r_dict["hum_msb_REG"], 2)
                 humidityBinary = "".join([format(val, '#010b')[2:] for val in humidity])
                 humidityInt = int(humidityBinary, 2)
-                #  perform compensation
+                #  TODO perform compensation
 
                 buffer.append(f"{pressureInt},{temperatureInt},{humidityInt}")
                 print(buffer)
