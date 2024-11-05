@@ -164,27 +164,28 @@ def readAtmos(i2c_address, data_path, backup_path, ctrl_meas_WORD, ctrl_hum_WORD
                 buffer.append(f"{pressureInt},{temperatureInt},{humidityInt}")
                 print(buffer)
 
-                # Save buffer to files every 10 seconds
-                if datetime.now() - last_buffer_save >= buffer_save_interval and buffer:
-                    print(f"[INFO] Writing buffer at {datetime.now().strftime('%H:%M:%S')}...")
-                    
-                    # Save to SD
-                    save_buffer_to_sd(data_file_sd, buffer)
+            # Save buffer to files every 10 seconds
+            if datetime.now() - last_buffer_save >= buffer_save_interval and buffer:
+                print(f"[INFO] Writing buffer at {datetime.now().strftime('%H:%M:%S')}...")
+                
+                # Save to SD
+                save_buffer_to_sd(data_file_sd, buffer)
 
-                    # Save to USB if connected
-                    if usb_connected:
-                        usb_connected = save_buffer_to_usb(data_file_usb, buffer)
+                # Save to USB if connected
+                if usb_connected:
+                    usb_connected = save_buffer_to_usb(data_file_usb, buffer)
 
-                    buffer.clear()  # Clear buffer after writing
-                    last_buffer_save = datetime.now()
+                buffer.clear()  # Clear buffer after writing
+                last_buffer_save = datetime.now()
 
-                # Create a new file every 5 minutes
-                if (datetime.now() - last_save_time).total_seconds() >= 60:
-                    print(f"\n[INFO] Creating new file at {datetime.now().strftime('%H:%M:%S')}")
-                    last_save_time = datetime.now()
-                    index += 1
-                    data_file_sd = generate_file_name(data_path, index)
-                    data_file_usb = generate_file_name(backup_path, index)
+            # Create a new file every 5 minutes
+            if (datetime.now() - last_save_time).total_seconds() >= 60:
+                print(f"\n[INFO] Creating new file at {datetime.now().strftime('%H:%M:%S')}")
+                last_save_time = datetime.now()
+                index += 1
+                data_file_sd = generate_file_name(data_path, index)
+                data_file_usb = generate_file_name(backup_path, index)
+                
     except (ValueError, IOError) as err:
         print(f"[ERROR] {err}")
             
