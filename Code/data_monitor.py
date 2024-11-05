@@ -27,11 +27,11 @@ class supervisorObject:
         self._objectInformation = programDict
         self.getStatus()
 
-    def _getFolderSize(folder:Path):
+    def _getFolderSize(self, folder:Path):
         return sum(f.stat().st_size for f in folder.glob('**/*') if f.is_file())
     
     # Function to determine the appropriate units for folder size
-    def _get_appropriate_byte(fsize):
+    def _get_appropriate_byte(self, fsize):
         for funit in ['B', 'kB', 'MB', 'GB']:
             if len(str(fsize)) > 4:
                 fsize = np.round(fsize/1024, decimals=1)
@@ -76,61 +76,29 @@ class supervisorObject:
             statusString = circle
         else:
             statusString = cross
+
+        shorthandfmtd = "{: <4}".format(f"{self.shorthand}")
         
         sizeDelta = self.getSizeDelta()
 
         sizeString = self._get_appropriate_byte(sizeDelta)
 
-        return "{: <21}".format(f"{statusString} | {self.shorthand} | {sizeString}")
+        return "{: <21}".format(f"{statusString} | {shorthandfmtd} | {sizeString}")
 
-def oled_thread_func(programList):
+def run_display(display_string, myOLED):
 
-    # Function to display a string on the OLED
-    def run_display(display_string, myOLED):
-
-        if myOLED.is_connected() == False:
-            print("The Qwiic OLED Display isn't connected to the system. Please check your connection", \
-                file=sys.stderr)
-            return
-        
-        myOLED.begin()
-        # ~ myOLED.clear(myOLED.ALL)
-        myOLED.clear(myOLED.PAGE)  #  Clear the display's buffer
-        myOLED.print(display_string)
-        print(display_string, flush=True)
-        myOLED.display()
-
-    pageSize = 4
-    print("Daedalus OLED Display\n")
-    myOLED = qwiic_oled_display.QwiicOledDisplay()
-    time.sleep(1)
+    if myOLED.is_connected() == False:
+        print("The Qwiic OLED Display isn't connected to the system. Please check your connection", \
+            file=sys.stderr)
+        return
+    
     myOLED.begin()
-    run_display("Daedalus OLED Display initialising...", myOLED)
-    numberOfPages = len(programList)//pageSize
-
-    while True:
-        for page in range(numberOfPages):
-            pageUsage = 0
-            programStrings = []
-            for supervisorObject in programList:
-                if pageUsage < pageSize:
-                    if supervisorObject.location is not None and supervisorObject.displayed == False:
-                        programStrings.append(supervisorObject.generateProgramString())
-                        pageUsage+=1
-                        supervisorObject.displayed = True
-                else:
-                    break   
-            oled_string = "".join(programStrings)
-            run_display(oled_string, myOLED)
-            time.sleep(3)
-        for supervisorObject in programList:
-            supervisorObject.displayed = False  
-    
-
-def transmitter_thread_func():
-    pass
-
-    
+    # ~ myOLED.clear(myOLED.ALL)
+    myOLED.clear(myOLED.PAGE)  #  Clear the display's buffer
+    myOLED.print(display_string)
+    print(display_string, flush=True)
+    myOLED.display()
+   
 if __name__ == '__main__':
     # Initialise display
     #tick = "✓"
@@ -143,12 +111,12 @@ if __name__ == '__main__':
 
     circle = "O"
     cross = "X"
-    # pageSize = 4
-    # print("Daedalus OLED Display\n")
-    # myOLED = qwiic_oled_display.QwiicOledDisplay()
-    # time.sleep(1)
-    # myOLED.begin()
-    # run_display("Daedalus OLED Display initialising...", myOLED)
+    pageSize = 4
+    print("Daedalus OLED Display\n")
+    myOLED = qwiic_oled_display.QwiicOledDisplay()
+    time.sleep(1)
+    myOLED.begin()
+    run_display("Daedalus OLED Display initialising...", myOLED)
 
     with open("../config/supervisord.conf", "r") as config:
         configString = "".join(config.readlines())
@@ -167,28 +135,25 @@ if __name__ == '__main__':
 
         programList.append(supervisorObject(programDict))
 
-    oledThread = Thread(target=oled_thread_func, args = (programList,), daemon=True)
-    oledThread.start()
+    numberOfPages = len(programList)//pageSize
+    # Parse supervisor.conf to get info about running components and attribute a data location to each program if they have a data location
+    # Generate Supervisor Objects with all the info in them as a list of objects
+    # Generate appropriate number of pages on the OLED for the programs that generate data
 
-    # numberOfPages = len(programList)//pageSize
-    #Parse supervisor.conf to get info about running components and attribute a data location to each program if they have a data location
-    #Generate Supervisor Objects with all the info in them as a list of objects
-    #Generate appropriate number of pages on the OLED for the programs that generate data
-
-    # while True:
-    #     for page in range(numberOfPages):
-    #         pageUsage = 0
-    #         programStrings = []
-    #         for supervisorObject in programList:
-    #             if pageUsage < pageSize:
-    #                 if supervisorObject.location is not None and supervisorObject.displayed == False:
-    #                     programStrings.append(supervisorObject.generateProgramString())
-    #                     pageUsage+=1
-    #                     supervisorObject.displayed = True
-    #             else:
-    #                 break   
-    #         oled_string = "".join(programStrings)
-    #         run_display(oled_string, myOLED)
-    #         time.sleep(3)
-    #     for supervisorObject in programList:
-    #         supervisorObject.displayed = False         
+    while True:
+        for page in range(numberOfPages):
+            pageUsage = 0
+            programStrings = []
+            for supervisorObject in programList:
+                if pageUsage < pageSize:
+                    if supervisorObject.location is not None and supervisorObject.displayed == False:
+                        programStrings.append(supervisorObject.generateProgramString())
+                        pageUsage+=1
+                        supervisorObject.displayed = True
+                else:
+                    break   
+            oled_string = "".join(programStrings)
+            run_display(oled_string, myOLED)
+            time.sleep(3)
+        for supervisorObject in programList:
+            supervisorObject.displayed = False         

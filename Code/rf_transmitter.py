@@ -39,7 +39,7 @@ if __name__ == "__main__":
     with serial.Serial(args.port, baudrate=57600, timeout=1) as ser:
         while(True):
             eventBytes = event_supervisor.getSizeDelta()
-            ser.write(eventBytes)
+            ser.write(f"{eventBytes}\n".encode("utf-8"))
             time.sleep(2)
 
     
