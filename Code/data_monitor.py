@@ -8,6 +8,7 @@ import re
 import argparse
 import serial
 from threading import Thread
+import mmap
 
 class supervisorObject:
     sizeDelta = 0
@@ -98,6 +99,27 @@ def run_display(display_string, myOLED):
     myOLED.print(display_string)
     print(display_string, flush=True)
     myOLED.display()
+
+
+
+def serialTransmit(port:str, gpsObject:supervisorObject, eventObject:supervisorObject):
+
+    def tail(fn, n=5, encoding='utf8'):
+        with open(fn) as f:
+            mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
+            nn = len(mm)
+            for i in range(n+1):
+                nn = mm.rfind(b'\n',0,nn)
+                if nn < 0: break
+            return mm[nn:].decode(encoding=encoding).strip()
+        
+    with serial.Serial(port, baudrate=57600, timeout=1) as ser:
+        while(True):
+            eventBytes = eventObject.sizeDelta
+            recentGPSData = tail(gpsObject.location, n=12)
+            recentCoords = re.search(r'^\$GNRMC.*\r\n$', recentGPSData).group()[-1]
+            ser.write(f"{eventBytes}\r\n{recentCoords}\r\n".encode("utf-8"))
+            time.sleep(2)
    
 if __name__ == '__main__':
     # Initialise display
@@ -121,6 +143,9 @@ if __name__ == '__main__':
     with open("../config/supervisord.conf", "r") as config:
         configString = "".join(config.readlines())
 
+
+    #TODO change program list to program dict
+
     programs = re.findall(r'\[program:[\s\S]*?\r?\n\r?\n', configString)
     programList = []
     for program in programs:
@@ -139,6 +164,9 @@ if __name__ == '__main__':
     # Parse supervisor.conf to get info about running components and attribute a data location to each program if they have a data location
     # Generate Supervisor Objects with all the info in them as a list of objects
     # Generate appropriate number of pages on the OLED for the programs that generate data
+
+    #TODO finish writing thread generator and include gps object and event camera object
+    eventProcess = Thread(target=serialTransmit, args=(args.part, ), daemon=True) 
 
     while True:
         for page in range(numberOfPages):
