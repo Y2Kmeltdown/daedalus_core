@@ -6,6 +6,8 @@ This branch is maintained by: Sami Arja
 ## Table of Contents
 - [About](#about)
 - [Simple Install (Preferred)](#simple-install-preferred)
+  -[Fast Manual Installation](#fast-manual-installation)
+  -[Developer Installation](#developer-install)
 - [Manual Installation (Ubuntu)](#manual-installation-ubuntu)
   - [Setting up the image](#setting-up-the-image)
   - [Connecting the Pi](#connecting-the-pi)
@@ -35,17 +37,28 @@ This branch is maintained by: Sami Arja
 
 Daedalus Core is a docker image and set of scripts that handle the collection of data from sensors on a raspberry pi. Daedalus core is designed to be flexible in implementation and simple to modify. It uses supervisord to daemonise python scripts for data collection and monitor their function.
 
-
-
 ## Simple Install (Preferred)
 
 You can use a raspberry pi image preloaded with the required configuration if you don't want to go through the steps of installing all the prerequisites. For this you can contact Nic Ralph(n.ralph@westernsydney.edu.au) and he will provide you with the image. Using a tool like balenaEtcher or raspberry pi imager, you can load an SD card with the image and insert it into a raspberry pi and have it up and running.
 
 **IMPORTANT NOTE:** The image is designed for raspberry pi 5 and may not be compatible with raspberry pi 4s.
 
+### Fast Manual Installation
+
+If you are already connected to raspberry pi running a fresh install of raspbian lite run the following command to complete the entire process:
+
+```bash
+sudo apt-get update && sudo apt install git -y && git clone https://github.com/Y2Kmeltdown/daedalus_core.git && cd daedalus_core && git checkout daedalus4 && sudo bash daedalusInstall.sh /home/$USER/data
+```
+
+### Developer Install
+
+If you are developing daedalus core and need to test you can use the following command to install all dependencies onto the pi and set up the configuration without making any changes to the network interface or running scripts in supervisor.
+
 ## Manual Installation (Ubuntu)
 
 ### Setting up the image
+
 Step 1: Install [raspberry pi imager](https://www.raspberrypi.com/software/) and select **Download for Ubuntu for x86** option. A .deb file will be downloaded.
 
 Step 2: To install the .deb file run the following:
@@ -228,18 +241,6 @@ sudo bash daedalusInstall.sh </path/to/data>
 The script sets all of the required raspberry pi configuration, moves the code and config into a permanent location, installs and starts supervisor, sets up the ethernet network as a host device then finally reboots to allow some changes to take affect. The data is stored in the specified location of the install script.
 
 After rebooting, daedalus core should start acting as a host device making it easy to connect via ethernet while in remote locations and the status of sensors should be available at `daedalus.local`
-
-### Super Fast Manual Installation
-
-If you are already connected to raspberry pi running a fresh install of raspbian lite run the following command to complete the entire process:
-
-```bash
-sudo apt-get update && sudo apt install git -y && git clone https://github.com/Y2Kmeltdown/daedalus_core.git && cd daedalus_core && git checkout daedalus4 && sudo bash daedalusInstall.sh /home/$USER/data
-```
-
-### Developer Install
-
-If you are developing daedalus core and need to test you can use the following command to install all dependencies onto the pi and set up the configuration without making any changes to the network interface or running scripts in supervisor.
 
 ```bash
 sudo apt-get update && sudo apt install git -y && git clone https://github.com/Y2Kmeltdown/daedalus_core.git && cd daedalus_core && git checkout daedalus4 && sudo bash devScript.sh
