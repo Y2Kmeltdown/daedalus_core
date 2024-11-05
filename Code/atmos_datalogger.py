@@ -161,7 +161,7 @@ def readAtmos(i2c_address, data_path, backup_path, ctrl_meas_WORD, ctrl_hum_WORD
                 humidityInt = int(humidityBinary, 2)
                 #  TODO perform compensation
 
-                buffer.append(f"{pressureInt},{temperatureInt},{humidityInt}")
+                buffer.append(f"{pressureInt},{temperatureInt},{humidityInt}\n".encode("utf-8"))
                 print(buffer)
 
             # Save buffer to files every 10 seconds
@@ -185,7 +185,7 @@ def readAtmos(i2c_address, data_path, backup_path, ctrl_meas_WORD, ctrl_hum_WORD
                 index += 1
                 data_file_sd = generate_file_name(data_path, index)
                 data_file_usb = generate_file_name(backup_path, index)
-                
+
     except (ValueError, IOError) as err:
         print(f"[ERROR] {err}")
             
@@ -196,7 +196,7 @@ def ensure_directory_exists(directory):
 
 def generate_file_name(base_dir, index):
     current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-    file_name = f"gps_data_{current_time}_{index}.txt"
+    file_name = f"atmos_data_{current_time}_{index}.txt"
     return os.path.join(base_dir, file_name)
 
 def save_buffer_to_sd(file_path_sd, buffer):
