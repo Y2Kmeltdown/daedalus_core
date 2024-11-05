@@ -55,6 +55,10 @@ sudo apt-get update && sudo apt install git -y && git clone https://github.com/Y
 
 If you are developing daedalus core and need to test you can use the following command to install all dependencies onto the pi and set up the configuration without making any changes to the network interface or running scripts in supervisor.
 
+```bash
+sudo apt-get update && sudo apt install git -y && git clone https://github.com/Y2Kmeltdown/daedalus_core.git && cd daedalus_core && git checkout daedalus4 && sudo bash devScript.sh
+```
+
 ## Manual Installation (Ubuntu)
 
 ### Setting up the image
@@ -241,10 +245,6 @@ sudo bash daedalusInstall.sh </path/to/data>
 The script sets all of the required raspberry pi configuration, moves the code and config into a permanent location, installs and starts supervisor, sets up the ethernet network as a host device then finally reboots to allow some changes to take affect. The data is stored in the specified location of the install script.
 
 After rebooting, daedalus core should start acting as a host device making it easy to connect via ethernet while in remote locations and the status of sensors should be available at `daedalus.local`
-
-```bash
-sudo apt-get update && sudo apt install git -y && git clone https://github.com/Y2Kmeltdown/daedalus_core.git && cd daedalus_core && git checkout daedalus4 && sudo bash devScript.sh
-```
 
 ## How to use
 
