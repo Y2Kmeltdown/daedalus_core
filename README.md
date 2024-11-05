@@ -6,8 +6,8 @@ This branch is maintained by: Sami Arja
 ## Table of Contents
 - [About](#about)
 - [Simple Install (Preferred)](#simple-install-preferred)
-  -[Fast Manual Installation](#fast-manual-installation)
-  -[Developer Installation](#developer-install)
+  - [Fast Manual Installation](#fast-manual-installation)
+  - [Developer Installation](#developer-install)
 - [Manual Installation (Ubuntu)](#manual-installation-ubuntu)
   - [Setting up the image](#setting-up-the-image)
   - [Connecting the Pi](#connecting-the-pi)
