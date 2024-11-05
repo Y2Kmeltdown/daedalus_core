@@ -143,11 +143,8 @@ if __name__ == '__main__':
     with open("../config/supervisord.conf", "r") as config:
         configString = "".join(config.readlines())
 
-
-    #TODO change program list to program dict
-
     programs = re.findall(r'\[program:[\s\S]*?\r?\n\r?\n', configString)
-    programList = []
+    supervisorDict = {}
     for program in programs:
         programDict = {}
         programLines = program.split("\n")
@@ -158,21 +155,19 @@ if __name__ == '__main__':
                 splitLines = line.split("=")
                 programDict[splitLines[0]]=splitLines[1]
 
-        programList.append(supervisorObject(programDict))
+        supervisorDict[programDict["program"]] = supervisorObject(programDict)
 
-    numberOfPages = len(programList)//pageSize
+    numberOfPages = len(supervisorDict)//pageSize
     # Parse supervisor.conf to get info about running components and attribute a data location to each program if they have a data location
     # Generate Supervisor Objects with all the info in them as a list of objects
     # Generate appropriate number of pages on the OLED for the programs that generate data
-
-    #TODO finish writing thread generator and include gps object and event camera object
-    eventProcess = Thread(target=serialTransmit, args=(args.part, ), daemon=True) 
+    eventProcess = Thread(target=serialTransmit, args=(args.port, supervisorDict["g_p_s"], supervisorDict["event_based_camera"]), daemon=True) 
 
     while True:
         for page in range(numberOfPages):
             pageUsage = 0
             programStrings = []
-            for supervisorObject in programList:
+            for supervisorObject in supervisorDict.values():
                 if pageUsage < pageSize:
                     if supervisorObject.location is not None and supervisorObject.displayed == False:
                         programStrings.append(supervisorObject.generateProgramString())
@@ -183,5 +178,5 @@ if __name__ == '__main__':
             oled_string = "".join(programStrings)
             run_display(oled_string, myOLED)
             time.sleep(3)
-        for supervisorObject in programList:
+        for supervisorObject in supervisorDict.values():
             supervisorObject.displayed = False         
