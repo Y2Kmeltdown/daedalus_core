@@ -11,6 +11,8 @@ import os
 from aiohttp import web, MultipartWriter
 import neuromorphic_drivers as nd
 
+from multiprocessing import Process, Pipe
+
 #TODO fix colour map of event viewer
 #TODO increase integration time for frames (not really necessary anymore)
 #TODO make the program exitable (Ask Alex)
@@ -120,6 +122,17 @@ class MjpegServer:
         '''
         pass
 
+def eventProducer(p_input):
+        # killer = GracefulKiller()
+        with nd.open(serial=args.serial) as device:#configuration=configuration
+            print(f"Successfully started EVK4 {args.serial}")
+
+            for status, packet in device:
+
+                p_input.send(packet)
+                # if killer.kill_now:
+                #     break
+
 if __name__ == "__main__":
     configuration = nd.prophesee_evk4.Configuration(
         biases=nd.prophesee_evk4.Biases(
@@ -141,23 +154,11 @@ if __name__ == "__main__":
     with nd.open(serial=args.serial) as device:
         cam_width = device.properties().width
         cam_height = device.properties().height
-
-    def getEvents(out_q):
-        # killer = GracefulKiller()
-        with nd.open(serial=args.serial) as device:#configuration=configuration
-            print(f"Successfully started EVK4 {args.serial}")
-
-            for status, packet in device:
-
-                out_q.put(packet)
-                # if killer.kill_now:
-                #     break
                 
-    eventQueue = queue.LifoQueue()
-    eventProcess = threading.Thread(target=getEvents, args=(eventQueue, ))   
-    eventProcess.daemon=True  
-
-    cam = Camera(0, (cam_width, cam_height), eventQueue, camScale=2)
+    p_output, p_input = Pipe()
+    eventProcess = Process(target=eventProducer, args=(p_input, ), daemon=True)   
+    
+    cam = Camera(0, (cam_width, cam_height), p_output, camScale=2)
     server = MjpegServer(cam=cam, port=args.port)
 
     try:
