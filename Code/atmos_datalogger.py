@@ -113,7 +113,7 @@ def atmosInit(t_sample:int = 1, p_sample:int = 1, h_sample:int = 1, mode:str = "
 
     return ctrl_meas_WORD, ctrl_hum_WORD, config_WORD, measurement_T
 
-def readAtmos(i2c_address,ctrl_meas_WORD, ctrl_hum_WORD, config_WORD, measurement_T, data_path, backup_path):
+def readAtmos(i2c_address, data_path, backup_path, ctrl_meas_WORD, ctrl_hum_WORD, config_WORD, measurement_T):
 
     # Ensure directories exist
     ensure_directory_exists(data_path)
