@@ -6,6 +6,7 @@ import threading
 import queue
 import logging
 import os
+import time
 # import signal
 
 from aiohttp import web, MultipartWriter
@@ -64,29 +65,22 @@ class StreamHandler:
             await response.write(b"\r\n")
 
 class Camera:
-    def __init__(self, idx, cam_dim:tuple, eventQueue:queue.Queue, camScale:int = 1):
+    def __init__(self, idx, p_output:Pipe, camScale:int = 1):
         self._idx = idx
-        self.width = cam_dim[0]
-        self.height = cam_dim[1]
+        
         self.scale = camScale
-        self.clear_frame()
-        self.events = eventQueue
+        #self.clear_frame()
+        self.framepipe = p_output
 
     @property
     def identifier(self):
         return self._idx
 
     async def get_frame(self):
-        packet = self.events.get()
-        self.events.queue.clear()
-        self.frame[
-            packet["dvs_events"]["y"],
-            packet["dvs_events"]["x"],
-            ] = 255
+        self.frame = self.framepipe.recv()
         if self.scale != 1:
             self.frame = cv2.resize(self.frame, dsize=(self.width//self.scale, self.height//self.scale), interpolation=cv2.INTER_CUBIC)
         frameout = cv2.imencode('.jpg', np.flip(self.frame, 0))[1]
-        self.clear_frame()
         await asyncio.sleep(1 / 25)
         return frameout.tobytes()
     
@@ -96,11 +90,7 @@ class Camera:
         '''
         pass
 
-    def clear_frame(self):
-        self.frame = np.zeros(
-        (self.height, self.width),
-        dtype=np.float32,
-        )
+    
 
 class MjpegServer:
 
@@ -133,6 +123,30 @@ def eventProducer(p_input):
                 # if killer.kill_now:
                 #     break
 
+def eventAccumulator(event_input, frame_output, dims):
+    frame = np.zeros(
+        (dims[1], dims(0)),
+        dtype=np.float32,
+    )
+    oldTime = time.monotonic_ns()
+    try:
+        while True:
+            packet = event_input.recv()
+            frame[
+                packet["dvs_events"]["y"],
+                packet["dvs_events"]["x"],
+            ] = 255
+            if time.monotonic_ns()-oldTime >= (1/50)*1000000000:
+                frame_output.send(frame)
+                frame = np.zeros(
+                    (dims[1], dims(0)),
+                    dtype=np.float32,
+                )
+                oldTime = time.monotonic_ns()
+    except:
+        logger.warning("Accumulator Failed")
+    
+
 if __name__ == "__main__":
     configuration = nd.prophesee_evk4.Configuration(
         biases=nd.prophesee_evk4.Biases(
@@ -155,10 +169,15 @@ if __name__ == "__main__":
         cam_width = device.properties().width
         cam_height = device.properties().height
                 
-    p_output, p_input = Pipe()
-    eventProcess = Process(target=eventProducer, args=(p_input, ), daemon=True)   
+    event_output, event_input = Pipe()
+
+    frame_output, frame_input = Pipe()
     
-    cam = Camera(0, (cam_width, cam_height), p_output, camScale=2)
+    eventProcess = Process(target=eventProducer, args=(event_input, ), daemon=True)   
+
+    frameProcess = Process(target=eventProducer, args=(frame_input,event_output,(cam_width, cam_height) ), daemon=True) 
+    
+    cam = Camera(0, frame_output, camScale=2)
     server = MjpegServer(cam=cam, port=args.port)
 
     try:
