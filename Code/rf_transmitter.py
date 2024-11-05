@@ -31,7 +31,7 @@ if __name__ == "__main__":
         if num == 0:
             programDict["program"] = re.search(r'(?<=\[program:)[^\]]+(?=\])', programLines[0]).group()
         elif line != "":
-            splitLines = line.split("= ")
+            splitLines = line.split("=")
             programDict[splitLines[0]]=splitLines[1]
 
     event_supervisor = supervisorObject(programDict)
