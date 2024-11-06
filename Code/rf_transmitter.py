@@ -92,12 +92,11 @@ def serialTransmit(port:str, gpsObject:supervisorObject, eventObject:supervisorO
     with serial.Serial(port, baudrate=57600, timeout=1) as ser:
         while(True):
             eventBytes = eventObject.getSizeDelta()
-            list_of_files = glob.glob(Path(gpsObject.location, os.listdir(gpsObject.location)[-1])) # * means all if need specific format then *.csv
+            list_of_files = glob.glob(str(gpsObject.location)+"/*") # * means all if need specific format then *.csv
             lastGPSFile = max(list_of_files, key=os.path.getctime)
-            print(lastGPSFile)
             with open(lastGPSFile) as f:
                 recentGPSData = "".join(f.readlines()[-50:-1])
-            recentCoords = re.findall(r'^\$GNRMC.*', recentGPSData)[-1]
+            recentCoords = re.findall(r'^\$GNRMC.*', recentGPSData, re.M)[-1]
             output = f"{eventBytes}\r\n{recentCoords}\r\n".encode("utf-8")
             print(output)
             ser.write(output)
