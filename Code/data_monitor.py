@@ -116,8 +116,9 @@ def serialTransmit(port:str, gpsObject:supervisorObject, eventObject:supervisorO
     with serial.Serial(port, baudrate=57600, timeout=1) as ser:
         while(True):
             eventBytes = eventObject.sizeDelta
-            recentGPSData = tail(gpsObject.location, n=12)
-            recentCoords = re.search(r'^\$GNRMC.*\r\n$', recentGPSData).group()[-1]
+            lastGPSFile = Path(gpsObject.location, os.listdir(gpsObject.location)[-1])
+            recentGPSData = tail(lastGPSFile, n=12)
+            recentCoords = re.findall(r'^\$GNRMC.*', recentGPSData)[-1]
             ser.write(f"{eventBytes}\r\n{recentCoords}\r\n".encode("utf-8"))
             time.sleep(2)
    
@@ -161,7 +162,8 @@ if __name__ == '__main__':
     # Parse supervisor.conf to get info about running components and attribute a data location to each program if they have a data location
     # Generate Supervisor Objects with all the info in them as a list of objects
     # Generate appropriate number of pages on the OLED for the programs that generate data
-    eventProcess = Thread(target=serialTransmit, args=(args.port, supervisorDict["g_p_s"], supervisorDict["event_based_camera"]), daemon=True) 
+    eventProcess = Thread(target=serialTransmit, args=(args.port, supervisorDict["g_p_s"], supervisorDict["event_based_camera"]), daemon=True)
+    eventProcess.start()
 
     while True:
         for page in range(numberOfPages):
