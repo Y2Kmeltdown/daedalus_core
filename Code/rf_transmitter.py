@@ -1,10 +1,14 @@
-import qwiic_oled_display
 from pathlib import Path
-import sys
 import numpy as np
 import time
 import os
 import re
+import argparse
+import serial
+
+import glob
+import os
+
 
 class supervisorObject:
     sizeDelta = 0
@@ -80,35 +84,36 @@ class supervisorObject:
 
         sizeString = self._get_appropriate_byte(sizeDelta)
 
-        return "{: <21}".format(f"{statusString} |{shorthandfmtd} |{sizeString}")
+        return "{: <21}".format(f"{statusString} | {shorthandfmtd} | {sizeString}")
 
-def run_display(display_string, myOLED):
 
-    if myOLED.is_connected() == False:
-        print("The Qwiic OLED Display isn't connected to the system. Please check your connection", \
-            file=sys.stderr)
-        return
-    
-    myOLED.begin()
-    # ~ myOLED.clear(myOLED.ALL)
-    myOLED.clear(myOLED.PAGE)  #  Clear the display's buffer
-    myOLED.print(display_string)
-    print(display_string, flush=True)
-    myOLED.display()
-
+def serialTransmit(port:str, gpsObject:supervisorObject, eventObject:supervisorObject):
+ 
+    with serial.Serial(port, baudrate=57600, timeout=1) as ser:
+        while(True):
+            eventBytes = eventObject.getSizeDelta()
+            list_of_files = glob.glob(Path(gpsObject.location, os.listdir(gpsObject.location)[-1])) # * means all if need specific format then *.csv
+            lastGPSFile = max(list_of_files, key=os.path.getctime)
+            print(lastGPSFile)
+            with open(lastGPSFile) as f:
+                recentGPSData = "".join(f.readlines()[-50:-1])
+            recentCoords = re.findall(r'^\$GNRMC.*', recentGPSData)[-1]
+            output = f"{eventBytes}\r\n{recentCoords}\r\n".encode("utf-8")
+            print(output)
+            ser.write(output)
+            time.sleep(2)
+   
 if __name__ == '__main__':
-    # Initialise display
-    #tick = "✓"
-    #cross = "✗"
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("port", help="Serial Port for GPS", type=str)
+    args = parser.parse_args()
+    port = serial.Serial(args.port, baudrate=57600, timeout=1)
 
-    circle = "O"
-    cross = "X"
-    pageSize = 4
-    print("Daedalus OLED Display\n")
-    myOLED = qwiic_oled_display.QwiicOledDisplay()
+
+    print("Daedalus RF Transmitter\n")
+    
     time.sleep(1)
-    myOLED.begin()
-    run_display("Daedalus OLED Display initialising...", myOLED)
+    
 
     with open("../config/supervisord.conf", "r") as config:
         configString = "".join(config.readlines())
@@ -127,26 +132,5 @@ if __name__ == '__main__':
 
         supervisorDict[programDict["program"]] = supervisorObject(programDict)
 
-    numberOfPages = len(supervisorDict)//pageSize
-    # Parse supervisor.conf to get info about running components and attribute a data location to each program if they have a data location
-    # Generate Supervisor Objects with all the info in them as a list of objects
-    # Generate appropriate number of pages on the OLED for the programs that generate data
-
-    #TODO Update this to always show event camera on 1st row
-    while True:
-        for page in range(numberOfPages): # Loop through 4 times to generate data for each row in the page
-            pageUsage = 0
-            programStrings = []
-            for supervisorObject in supervisorDict.values():
-                if pageUsage < pageSize:
-                    if supervisorObject.location is not None and supervisorObject.displayed == False:
-                        programStrings.append(supervisorObject.generateProgramString())
-                        pageUsage+=1
-                        supervisorObject.displayed = True
-                else:
-                    break   
-            oled_string = "".join(programStrings)
-            run_display(oled_string, myOLED)
-            time.sleep(3)
-        for supervisorObject in supervisorDict.values():
-            supervisorObject.displayed = False         
+    
+    serialTransmit(args.port, supervisorDict["g_p_s"], supervisorDict["event_based_camera"])       
