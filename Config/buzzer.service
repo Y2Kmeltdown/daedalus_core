@@ -1,0 +1,11 @@
+[Unit]
+Description=Buzzer
+After=network.target
+
+[Service]
+Type=idle
+User=root
+ExecStart=/usr/bin/python /usr/local/daedalus/code/Buzzer.py
+
+[Install]
+WantedBy=multi-user.target

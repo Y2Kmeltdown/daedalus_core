@@ -74,6 +74,14 @@ sudo cp /usr/local/daedalus/config/external_watchdog.service /lib/systemd/system
 sudo chmod 644 /lib/systemd/system/external_watchdog.service
 sudo systemctl daemon-reload
 sudo systemctl enable external_watchdog.service
+
+## Buzzer installation
+sudo cp /usr/local/daedalus/config/buzzer.service /lib/systemd/system/buzzer.service
+sudo chmod 644 /lib/systemd/system/buzzer.service
+sudo systemctl daemon-reload
+sudo systemctl enable buzzer.service
+
+
 ## SUPERVISOR INSTALLATION
 sudo mkdir -p /etc/supervisor/conf.d
 sudo cp /usr/local/daedalus/config/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
