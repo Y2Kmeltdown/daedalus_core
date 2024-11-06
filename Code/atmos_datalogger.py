@@ -147,43 +147,45 @@ def readAtmos(i2c_address, data_path, backup_path, ctrl_meas_WORD, ctrl_hum_WORD
                 pressure = i2cbus.read_i2c_block_data(i2c_address, r_dict["press_msb_REG"], 3)
                 pressureBinary = "".join([format(val, '#010b')[2:] for val in pressure])[0:-4]
                 pressureInt = int(pressureBinary, 2)
-                #  perform compensation
+                #  TODO perform compensation
                 
                 
                 temperature = i2cbus.read_i2c_block_data(i2c_address, r_dict["temp_msb_REG"], 3)
                 temperatureBinary = "".join([format(val, '#010b')[2:] for val in temperature])[0:-4]
                 temperatureInt = int(temperatureBinary, 2)
-                #  perform compensation
+                #  TODO perform compensation
                 
 
                 humidity = i2cbus.read_i2c_block_data(i2c_address, r_dict["hum_msb_REG"], 2)
                 humidityBinary = "".join([format(val, '#010b')[2:] for val in humidity])
                 humidityInt = int(humidityBinary, 2)
-                #  perform compensation
+                #  TODO perform compensation
 
-                buffer.append(f"{pressureInt},{temperatureInt},{humidityInt}")
+                buffer.append(f"{pressureInt},{temperatureInt},{humidityInt}\n".encode("utf-8"))
+                print(buffer)
 
-                # Save buffer to files every 10 seconds
-                if datetime.now() - last_buffer_save >= buffer_save_interval and buffer:
-                    print(f"[INFO] Writing buffer at {datetime.now().strftime('%H:%M:%S')}...")
-                    
-                    # Save to SD
-                    save_buffer_to_sd(data_file_sd, buffer)
+            # Save buffer to files every 10 seconds
+            if datetime.now() - last_buffer_save >= buffer_save_interval and buffer:
+                print(f"[INFO] Writing buffer at {datetime.now().strftime('%H:%M:%S')}...")
+                
+                # Save to SD
+                save_buffer_to_sd(data_file_sd, buffer)
 
-                    # Save to USB if connected
-                    if usb_connected:
-                        usb_connected = save_buffer_to_usb(data_file_usb, buffer)
+                # Save to USB if connected
+                if usb_connected:
+                    usb_connected = save_buffer_to_usb(data_file_usb, buffer)
 
-                    buffer.clear()  # Clear buffer after writing
-                    last_buffer_save = datetime.now()
+                buffer.clear()  # Clear buffer after writing
+                last_buffer_save = datetime.now()
 
-                # Create a new file every 5 minutes
-                if (datetime.now() - last_save_time).total_seconds() >= 60:
-                    print(f"\n[INFO] Creating new file at {datetime.now().strftime('%H:%M:%S')}")
-                    last_save_time = datetime.now()
-                    index += 1
-                    data_file_sd = generate_file_name(data_path, index)
-                    data_file_usb = generate_file_name(backup_path, index)
+            # Create a new file every 5 minutes
+            if (datetime.now() - last_save_time).total_seconds() >= 60:
+                print(f"\n[INFO] Creating new file at {datetime.now().strftime('%H:%M:%S')}")
+                last_save_time = datetime.now()
+                index += 1
+                data_file_sd = generate_file_name(data_path, index)
+                data_file_usb = generate_file_name(backup_path, index)
+
     except (ValueError, IOError) as err:
         print(f"[ERROR] {err}")
             
@@ -194,7 +196,7 @@ def ensure_directory_exists(directory):
 
 def generate_file_name(base_dir, index):
     current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-    file_name = f"gps_data_{current_time}_{index}.txt"
+    file_name = f"atmos_data_{current_time}_{index}.txt"
     return os.path.join(base_dir, file_name)
 
 def save_buffer_to_sd(file_path_sd, buffer):
