@@ -18,7 +18,12 @@ configuration = nd.prophesee_evk4.Configuration(
 )
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument("serial", help="Camera serial number (for example 00050423)")
+parser.add_argument(
+    "serial", 
+    help="Camera serial number list must contain at least one serial number (for example 00050423 00051505 00051503)",
+    nargs="+",
+    type=str
+)
 parser.add_argument(
     "--data",
     default=str(dirname / "recordings"),
@@ -42,6 +47,17 @@ parser.add_argument(
     help="Maximum interval between file flushes in seconds",
 )
 args = parser.parse_args()
+
+def check_event_camera(serialNumberList):
+    evkSerialList = [i.serial for i in nd.list_devices()]
+    try:
+        serialNumber = [i for i in evkSerialList if i in serialNumberList][0]
+        return serialNumber
+    except Exception as e:
+        print(f"Error during serial number check: {e}", flush=True)
+        return None
+    
+    
 
 def ensure_directory(path):
     """Ensure that the directory exists."""
@@ -71,9 +87,9 @@ def save_to_paths(primary_path, backup_path, data, mode='wb'):
     except Exception as e:
         print(f"Error saving to backup path {backup_path}: {e}", file=sys.stderr)
 
-def record_5Mins():
-    output_directory = pathlib.Path(args.data).resolve() / f"evk4_{args.serial}"
-    backup_directory = pathlib.Path(args.backup).resolve() / f"evk4_{args.serial}"
+def record_5Mins(serial:str):
+    output_directory = pathlib.Path(args.data).resolve() / f"evk4_{serial}"
+    backup_directory = pathlib.Path(args.backup).resolve() / f"evk4_{serial}"
 
     ensure_directory(output_directory)
     ensure_directory(backup_directory)
@@ -84,8 +100,8 @@ def record_5Mins():
     measurement_interval = int(round(args.measurement_interval * 1e9))
     name = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
-    with nd.open(raw=True, serial=args.serial) as device:
-        print(f"Successfully started EVK4 at serial: {args.serial}")
+    with nd.open(raw=True, serial=serial) as device:
+        print(f"Successfully started EVK4 at serial: {serial}")
         print(f"Started Recording to SD: {output_directory / (name + '_events.raw')}")
 
         # Save the camera biases (metadata)
@@ -213,5 +229,6 @@ def record_5Mins():
                 measurements_backup.close()
 
 if __name__ == "__main__":
+    serial = check_event_camera(args.serial)
     while True:
-        record_5Mins()
+        record_5Mins(serial)

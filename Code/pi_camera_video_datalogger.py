@@ -90,7 +90,7 @@ def start_video_recording(camera: Picamera2, data_path: str, backup_path: str, d
             # Check if USB is disconnected during recording
             if usb_recording and not is_usb_connected(backup_path):
                 try:
-                    camera.stop_recording(encoder_usb)
+                    camera.stop_recording()
                     usb_recording = False
                     print(f"USB disconnected. Stopped recording on USB drive: {usb_filename}", flush=True)
                 except Exception as e:
@@ -99,7 +99,7 @@ def start_video_recording(camera: Picamera2, data_path: str, backup_path: str, d
     finally:
         # Stop recording on SD card
         try:
-            camera.stop_recording(encoder_sd)
+            camera.stop_recording()
             print(f"Recording stopped on SD card: {sd_filename}", flush=True)
         except Exception as e:
             print(f"Error stopping recording on SD card: {e}", flush=True)
@@ -107,7 +107,7 @@ def start_video_recording(camera: Picamera2, data_path: str, backup_path: str, d
         # Stop recording on USB if still recording
         if usb_recording:
             try:
-                camera.stop_recording(encoder_usb)
+                camera.stop_recording()
                 print(f"Recording stopped on USB drive: {usb_filename}", flush=True)
             except Exception as e:
                 print(f"Error stopping recording on USB drive: {e}", flush=True)

@@ -52,18 +52,18 @@ def save_snapshot(data_path: str, backup_path: str, filename: str, imgMetadata: 
         print(f"Error saving to data directory: {e}", flush=True)
 
     # Save to backup directory if available
-    if is_backup_available(backup_path):
-        try:
-            Path(backup_path).mkdir(parents=True, exist_ok=True)
-            with open(f'{backup_path}/{filename}.json', 'w') as f:
-                f.write(json.dumps(imgMetadata))
-            print(f'Metadata saved to {backup_path}/{filename}.json', flush=True)
-            request.save('main', f'{backup_path}/{filename}.png')
-            print(f'Snapshot saved to {backup_path}/{filename}.png', flush=True)
-        except Exception as e:
-            print(f"Error saving to backup directory: {e}", flush=True)
-    else:
-        print("Backup directory not available. Saving to SD card only.", flush=True)
+    #if is_backup_available(backup_path):
+    try:
+        Path(backup_path).mkdir(parents=True, exist_ok=True)
+        with open(f'{backup_path}/{filename}.json', 'w') as f:
+            f.write(json.dumps(imgMetadata))
+        print(f'Metadata saved to {backup_path}/{filename}.json', flush=True)
+        request.save('main', f'{backup_path}/{filename}.png')
+        print(f'Snapshot saved to {backup_path}/{filename}.png', flush=True)
+    except Exception as e:
+        print(f"Error saving to backup directory: {e}", flush=True)
+    #else:
+        #print("Backup directory not available. Saving to SD card only.", flush=True)
 
 def snapshot(camera: Picamera2, data_path: str, backup_path: str):
     timestr = time.strftime("%Y%m%d-%H%M%S")
@@ -95,13 +95,13 @@ def cameraControls(camera: Picamera2, jsonConfig: str):
             for setting, value in settings.items():
                 camera.set_controls({setting: value})
 
-def is_backup_available(backup_path: str) -> bool:
-    # Check if the path exists and is mounted
-    try:
-        return Path(backup_path).exists() and os.path.ismount(backup_path)
-    except Exception as e:
-        print(f"Error checking backup availability: {e}", flush=True)
-        return False
+# def is_backup_available(backup_path: str) -> bool:
+#     # Check if the path exists and is mounted
+#     try:
+#         return Path(backup_path).exists() and os.path.ismount(backup_path)
+#     except Exception as e:
+#         print(f"Error checking backup availability: {e}", flush=True)
+#         return False
 
 if __name__ == "__main__":
     Path(args.data).mkdir(parents=True, exist_ok=True)
@@ -114,7 +114,7 @@ if __name__ == "__main__":
 
     time.sleep(2)
 
-    backup_connected = False
+    # backup_connected = False
 
     while True:
         try:
@@ -122,14 +122,14 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"Error during snapshot capture: {e}", flush=True)
 
-        # Check backup drive status
-        if is_backup_available(args.backup):
-            if not backup_connected:
-                print("Backup drive reconnected. Resuming saving to USB.", flush=True)
-                backup_connected = True
-        else:
-            if backup_connected:
-                print("Backup drive disconnected. Saving to SD card only.", flush=True)
-                backup_connected = False
+        # # Check backup drive status
+        # if is_backup_available(args.backup):
+        #     if not backup_connected:
+        #         print("Backup drive reconnected. Resuming saving to USB.", flush=True)
+        #         backup_connected = True
+        # else:
+        #     if backup_connected:
+        #         print("Backup drive disconnected. Saving to SD card only.", flush=True)
+        #         backup_connected = False
 
         time.sleep(args.timer)
