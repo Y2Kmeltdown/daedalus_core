@@ -4,34 +4,40 @@ This branch is maintained by: Sami Arja
 
 
 ## Table of Contents
-- [About](#about)
-- [Simple Install (Preferred)](#simple-install-preferred)
-  - [Fast Manual Installation](#fast-manual-installation)
-  - [Developer Installation](#developer-install)
-- [Manual Installation (Ubuntu)](#manual-installation-ubuntu)
-  - [Setting up the image](#setting-up-the-image)
-  - [Connecting the Pi](#connecting-the-pi)
-  - [SSH into the Pi (Terminal)](#ssh-into-the-pi-terminal)
-  - [SSH into the Pi (VSC)](#ssh-into-the-pi-vsc)
-- [Manual Installation (Windows)](#manual-installation-windows)
-  - [Setting up the image](#setting-up-the-image)
-  - [Connecting to the Pi](#connecting-to-the-pi)
-    - [Direct connection](#direct-connection)
-    - [Ethernet connection](#ethernet-connection)
-    - [Wi-Fi connection](#wi-fi-connection)
-    - [Host computer](#host-computer)
-- [Configuring the Pi](#configuring-the-pi)
-- [How to use](#how-to-use)
-  - [Accessing supervisord](#accessing-supervisord)
-  - [Accessing mjpeg server](#accessing-mjpeg-server)
-- [How it works](#how-it-works)
-- [Modifying Daedalus Core](#modifying-daedalus-core)
-- [Appendix](#appendix)
-  - [Setup a new USB drive](#setup-a-new-usb-drive)
-  - [Installing Bonjour](#installing-bonjour)
-  - [Using Windows as a host device](#using-windows-as-a-host-device)
-    - [Automatic Method](#automatic-method)
-    - [Manual Method](#manual-method)
+- [Daedalus Core](#daedalus-core)
+  - [Table of Contents](#table-of-contents)
+  - [About](#about)
+  - [Simple Install (Preferred)](#simple-install-preferred)
+    - [Fast Manual Installation](#fast-manual-installation)
+    - [Developer Install](#developer-install)
+  - [Manual Installation (Ubuntu)](#manual-installation-ubuntu)
+    - [Setting up the image](#setting-up-the-image)
+    - [Connecting the Pi](#connecting-the-pi)
+    - [SSH into the Pi (Terminal)](#ssh-into-the-pi-terminal)
+    - [SSH into the Pi (VSC)](#ssh-into-the-pi-vsc)
+  - [Manual Installation (Windows)](#manual-installation-windows)
+    - [Setting up the image](#setting-up-the-image-1)
+    - [Connecting to the Pi](#connecting-to-the-pi)
+      - [Direct connection](#direct-connection)
+      - [Ethernet connection](#ethernet-connection)
+      - [Wi-Fi connection](#wi-fi-connection)
+      - [Host computer](#host-computer)
+  - [Configuring the Pi](#configuring-the-pi)
+  - [How to use](#how-to-use)
+    - [Accessing supervisord](#accessing-supervisord)
+    - [Accessing mjpeg server](#accessing-mjpeg-server)
+  - [How it works](#how-it-works)
+  - [Modifying Daedalus Core](#modifying-daedalus-core)
+    - [Sensor Scripts](#sensor-scripts)
+    - [supervisor config](#supervisor-config)
+  - [Appendix](#appendix)
+    - [Installing Bonjour](#installing-bonjour)
+    - [Using Windows as a host device](#using-windows-as-a-host-device)
+      - [Automatic Method](#automatic-method)
+      - [Manual Method](#manual-method)
+  - [Make the final image (Ubuntu)](#make-the-final-image-ubuntu)
+
+
 
 ## About
 
@@ -76,7 +82,7 @@ Step 3: Search for **Imager** software.
 Step 4: On the GUI select the following option:
     
     - CHOOSE DEVICE: Raspberry pi 5
-    - CHOOSE OS: Raspberry Pi OS (other) -> Raspberry Pi OS Lite (32-bit)
+    - CHOOSE OS: Raspberry Pi OS (other) -> Raspberry Pi OS Lite (64-bit) (No Desktop)
     - CHOOSE STORAGE: ***Select the option based on the SD card name***
 
 Step 5: Edit the settings like in the figures below
@@ -315,3 +321,33 @@ This method is mostly just an explanation of how windows works as a host device.
 You will be forced to enter DNS addresses in the groupbox below as well. For this you can enter any DNS address you want to use. Normal DNS addresses can be something like `1.1.1.1` (Cloudflare) and `8.8.8.8` (Google)
 
 The specific ip address `192.168.137.1` is important to windows because windows natively uses that ip address to run a dhcp server which will automatically provide ip addresses to connected devices. This is how the sharing option can actually share internet connections to connected devices.
+
+
+## Make the final image (Ubuntu)
+This step will allow you to make a producation ready image, no need to run daedalisinstallation.sh anymore. 
+
+Step 1: Flash **Raspberry Pi OS Lite (64-bit) (No Desktop)**  on a small SD card (32GB recommanded)
+Step 2: ssh daedalus@daedalus.local
+Step 3: Run the following command
+```bash
+sudo apt-get update && sudo apt install git -y && git clone https://github.com/Y2Kmeltdown/daedalus_core.git && cd daedalus_core && git checkout daedalus4 && sudo bash daedalusInstall.sh /home/$USER/data
+```
+
+Step 4: Plug the SD card back to your machine
+
+Step 5: Find the disk name
+```sh
+sudo fdisk -l
+```
+
+Step 6: Write the image file using dd command
+
+```sh
+sudo dd if=<path-to-sd-card> of=<path-to-output-image>/unshrunkdaedalus.img
+```
+
+Step 7: Shrink the image 
+
+```sh
+sudo pishrink.sh <path-to-output-image>/unshrunkdaedalus.img <path-to-output-image>/daedalus.img
+```
