@@ -9,7 +9,7 @@ i2c = board.I2C()
 icm = adafruit_icm20x.ICM20948(i2c, 0x69)
 
 # Initialize the serial connection to Teensy
-teensy_serial = serial.Serial('/dev/ttyACM1', 115200)  # Adjust port as necessary
+teensy_serial = serial.Serial('/dev/ttyACM0', 115200)  # Adjust port as necessary
 
 
 # Low-pass filter constants for gyroscope data
