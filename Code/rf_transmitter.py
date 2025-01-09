@@ -22,9 +22,9 @@ class supervisorObject:
     def __init__(self, programDict:dict):
         self.name = programDict["program"]
         self.shorthand = "".join(re.findall(r'(?:^|_)(\w)', self.name))
-        locationTest = re.search(r'(?<=--data\s)[^\s]+', programDict["command"])
-        if locationTest is not None:
-            self.location = Path(locationTest.group())
+        location = re.search(r'(?<=--data\s)[^\s]+', programDict["command"])
+        if location is not None:
+            self.location = Path(location.group())
             self.folderSize = self._getFolderSize(self.location)
         else:
             self.location = None
