@@ -301,10 +301,10 @@ def generateDataString(gpsObject:supervisorObject, eventObject:supervisorObject)
 
 
 if __name__ == '__main__':
-    #parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    #parser.add_argument("port", help="Serial Port for GPS", type=str)
-    #args = parser.parse_args()
-    port = "COM8"
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("port", help="Serial Port for GPS", type=str)
+    args = parser.parse_args()
+    #port = "COM8"
     baudrate = "57600"
     supervisorFile = "../config/supervisord.conf"
     transceiver = transceiverObject(port, baudrate)
