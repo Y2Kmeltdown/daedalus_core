@@ -289,11 +289,17 @@ def generateSupervisorObjects(supervisorFile:str):
 def generateDataString(gpsObject:supervisorObject, eventObject:supervisorObject):
     eventBytes = eventObject.getSizeDelta()
     list_of_files = glob.glob(str(gpsObject.location)+"/*") # * means all if need specific format then *.csv
-    lastGPSFile = max(list_of_files, key=os.path.getctime)
-    with open(lastGPSFile) as f:
-        recentGPSData = "".join(f.readlines()[-50:-1])
-    recentCoords = re.findall(r'^\$GNRMC.*', recentGPSData, re.M)[-1]
+    if list_of_files:
+        print(type(list_of_files))
+        lastGPSFile = max(list_of_files, key=os.path.getctime)
+        with open(lastGPSFile) as f:
+            recentGPSData = "".join(f.readlines()[-50:-1])
+            recentCoords = re.findall(r'^\$GNRMC.*', recentGPSData, re.M)[-1]
+    else:
+        recentCoords = "No GPS Data Found"
+
     output = f"{eventBytes}\r\n{recentCoords}\r\n".encode("utf-8")
+    print(output)
 
     return output
         
@@ -307,7 +313,7 @@ if __name__ == '__main__':
     #port = "COM8"
     baudrate = "57600"
     supervisorFile = "../config/supervisord.conf"
-    transceiver = transceiverObject(port, baudrate)
+    transceiver = transceiverObject(args.port, baudrate)
 
 
     print("Daedalus RF Transmitter\n")
