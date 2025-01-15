@@ -1,3 +1,7 @@
+import pyudev
+import subprocess
+from typing import List, Dict
+
 import time
 import serial
 import threading
@@ -12,9 +16,93 @@ import argparse
 import glob
 import os
 
+def monitor_usb_drives() -> List[Dict[str, str]]:
+    """
+    Monitor and detect USB flash drives connected to the system.
+    
+    Returns:
+        List[Dict[str, str]]: List of dictionaries containing information about connected USB drives
+    """
+    context = pyudev.Context()
+    connected_drives = []
+    
+    try:
+        # Find all block devices that are USB storage devices
+        for device in context.list_devices(subsystem='block', ID_BUS='usb'):
+            # Check if it's a partition (real storage device)
+            if device.get('DEVTYPE') == 'partition':
+                # Get both current mounts and fstab configurations
+                mount_info = get_mount_point(device.device_node)
+                drive_info = {
+                    'device_node': device.device_node,
+                    'vendor': device.get('ID_VENDOR', 'Unknown'),
+                    'product': device.get('ID_MODEL', 'Unknown'),
+                    'mount_point': mount_info['current_mount'],
+                    'fstab_mount': mount_info['fstab_mount'],
+                    'mount_type': mount_info['mount_type']
+                }
+                connected_drives.append(drive_info)
+                
+        return connected_drives
+    
+    except Exception as e:
+        print(f"Error monitoring USB drives: {str(e)}")
+        return []
+
+def get_mount_point(device_node: str) -> Dict[str, str]:
+    """
+    Get comprehensive mounting information for a device.
+    
+    Args:
+        device_node (str): Device node path (e.g., /dev/sda1)
+        
+    Returns:
+        Dict[str, str]: Dictionary containing current_mount, fstab_mount, and mount_type
+    """
+    mount_info = {
+        'current_mount': 'Not Mounted',
+        'fstab_mount': 'Not in fstab',
+        'mount_type': 'none'
+    }
+    
+    # Check current mounts
+    try:
+        with open('/proc/mounts', 'r') as f:
+            for line in f:
+                if device_node in line:
+                    mount_info['current_mount'] = line.split()[1]
+                    mount_info['mount_type'] = 'active'
+    except Exception as e:
+        print(f"Error reading current mounts: {str(e)}")
+    
+    # Check systemd automount points
+    try:
+        result = subprocess.run(['systemctl', 'list-units', '--type=automount', '--all'],
+                              capture_output=True, text=True)
+        for line in result.stdout.splitlines():
+            if mount_info['current_mount'] in line:
+                mount_info['mount_type'] = 'automount'
+    except Exception as e:
+        print(f"Error checking systemd automounts: {str(e)}")
+    
+    # Check fstab entries
+    try:
+        with open('/etc/fstab', 'r') as f:
+            for line in f:
+                if line.startswith('#'):
+                    continue
+                if device_node in line:
+                    fields = line.split()
+                    mount_info['fstab_mount'] = fields[1]
+                    if 'x-systemd.automount' in line:
+                        mount_info['mount_type'] = 'automount'
+    except Exception as e:
+        print(f"Error reading fstab: {str(e)}")
+    
+    return mount_info
 
 
-class supervisorObject:
+class supervisor:
     sizeDelta = 0
     displayed = False
 
@@ -90,7 +178,27 @@ class supervisorObject:
 
         return "{: <21}".format(f"{statusString} | {shorthandfmtd} | {sizeString}")
 
-class transceiverObject:
+def generateSupervisorObjects(supervisorFile:str):
+    with open(supervisorFile, "r") as config:
+        configString = "".join(config.readlines())
+
+    programs = re.findall(r'\[program:[\s\S]*?\r?\n\r?\n', configString)
+    supervisorDict = {}
+    for program in programs:
+        programDict = {}
+        programLines = program.split("\n")
+        for num, line in enumerate(programLines):
+            if num == 0:
+                programDict["program"] = re.search(r'(?<=\[program:)[^\]]+(?=\])', programLines[0]).group()
+            elif line != "":
+                splitLines = line.split("=")
+                programDict[splitLines[0]]=splitLines[1]
+
+        supervisorDict[programDict["program"]] = supervisor(programDict)
+
+    return supervisorDict
+
+class transceiver:
     MAX_QUEUE_SIZE = 1000  # Maximum number of messages to queue
     _receiveQueue = queue.Queue()
     _transmitQueue = queue.Queue()
@@ -266,45 +374,3 @@ class transceiverObject:
         except queue.Empty:
             return None
 
-
-
-def generateDataString(gpsObject:supervisorObject, eventObject:supervisorObject):
-    eventBytes = eventObject.getSizeDelta()
-    list_of_files = glob.glob(str(gpsObject.location)+"/*") # * means all if need specific format then *.csv
-    if list_of_files:
-        print(type(list_of_files))
-        lastGPSFile = max(list_of_files, key=os.path.getctime)
-        with open(lastGPSFile) as f:
-            recentGPSData = "".join(f.readlines()[-50:-1])
-            recentCoords = re.findall(r'^\$GNRMC.*', recentGPSData, re.M)[-1]
-    else:
-        recentCoords = "No GPS Data Found"
-
-    output = f"{eventBytes}\r\n{recentCoords}\r\n".encode("utf-8")
-    print(output)
-
-    return output
-        
-        
-
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("port", help="Serial Port for GPS", type=str)
-    args = parser.parse_args()
-    #port = "COM8"
-    baudrate = "57600"
-    supervisorFile = "../config/supervisord.conf"
-    transceiver = transceiverObject(args.port, baudrate)
-
-
-    print("Daedalus RF Transmitter\n")
-    
-    time.sleep(1)
-    
-    supervisorDict = generateSupervisorObjects(supervisorFile)
-
-    while True:
-        dataString = generateDataString(supervisorDict["g_p_s"], supervisorDict["event_based_camera"])
-        transceiver.transmit(dataString)
-        time.sleep(2)
