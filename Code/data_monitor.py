@@ -144,9 +144,10 @@ if __name__ == '__main__':
                         pageUsage+=1
                         supervisorObject.displayed = True
                 else:
-                    break   
-            oled_string = "".join(programStrings)
-            run_display(oled_string, myOLED)
-            time.sleep(3)
+                    break
+            if programStrings:   
+                oled_string = "".join(programStrings)
+                run_display(oled_string, myOLED)
+                time.sleep(3)
         for supervisorObject in supervisorDict.values():
-            supervisorObject.displayed = False         
+            supervisorObject.displayed = False        
