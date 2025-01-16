@@ -72,6 +72,9 @@ class data_handler:
         
     def write_data(self, data):
 
+        if isinstance(data, list):
+            data = "\n".join(data)
+
         if isinstance(data, str):
             data = data.encode('utf-8')
         elif not isinstance(data, bytes):

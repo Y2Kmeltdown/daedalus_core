@@ -114,7 +114,7 @@ def atmosInit(t_sample:int = 1, p_sample:int = 1, h_sample:int = 1, mode:str = "
 
     return ctrl_meas_WORD, ctrl_hum_WORD, config_WORD, measurement_T
 
-def readAtmos(i2c_address, data_path, backup_path, ctrl_meas_WORD, ctrl_hum_WORD, config_WORD, measurement_T):
+def readAtmos(i2c_address, data_path, backup_path, record_time, ctrl_meas_WORD, ctrl_hum_WORD, config_WORD, measurement_T):
 
     atmosData = daedalus_utils.data_handler(
         sensorName=sensorName, 
@@ -167,16 +167,17 @@ def readAtmos(i2c_address, data_path, backup_path, ctrl_meas_WORD, ctrl_hum_WORD
             if datetime.now() - last_buffer_save >= buffer_save_interval and buffer:
                 print(f"[INFO] Writing buffer at {datetime.now().strftime('%H:%M:%S')}...")
                 
-                atmosData.write_data("\n".join(buffer))
+                atmosData.write_data(buffer)
 
                 buffer.clear()  # Clear buffer after writing
                 last_buffer_save = datetime.now()
 
             # Create a new file every 5 minutes
-            if (datetime.now() - last_save_time).total_seconds() >= 60:
+            if (datetime.now() - last_save_time).total_seconds() >= record_time:
                 print(f"\n[INFO] Creating new file at {datetime.now().strftime('%H:%M:%S')}")
                 last_save_time = datetime.now()
                 atmosData.generate_filename()
+                atmosData.validate_savepoints()
 
     except (ValueError, IOError) as err:
         print(f"[ERROR] {err}")
@@ -197,10 +198,13 @@ if __name__ == "__main__":
             help="Path of the directory where recordings are backed up",
             type=str
         )
+    parser.add_argument(
+        "--record_time",
+        default=300,
+        help="Time in seconds for how long to record to a single file"
+    )
     args = parser.parse_args()
     ctrl_meas_WORD, ctrl_hum_WORD, config_WORD, measurement_T = atmosInit()
     
-    print(measurement_T)
-    
-    readAtmos(int(args.i2c, 16), args.data, args.backup, ctrl_meas_WORD, ctrl_hum_WORD, config_WORD, measurement_T)
+    readAtmos(int(args.i2c, 16), args.data, args.backup, args.record_time, ctrl_meas_WORD, ctrl_hum_WORD, config_WORD, measurement_T)
 
