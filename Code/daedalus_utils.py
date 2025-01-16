@@ -1,203 +1,299 @@
-import pyudev
+import os
 import subprocess
-from typing import List, Dict
-
 import time
 import serial
 import threading
 import queue
-
-from pathlib import Path
-import numpy as np
-import os
 import re
-import argparse
-
-import glob
 import os
 
-def monitor_usb_drives() -> List[Dict[str, str]]:
-    """
-    Monitor and detect USB flash drives connected to the system.
-    
-    Returns:
-        List[Dict[str, str]]: List of dictionaries containing information about connected USB drives
-    """
-    context = pyudev.Context()
-    connected_drives = []
-    
-    try:
-        # Find all block devices that are USB storage devices
-        for device in context.list_devices(subsystem='block', ID_BUS='usb'):
-            # Check if it's a partition (real storage device)
-            if device.get('DEVTYPE') == 'partition':
-                # Get both current mounts and fstab configurations
-                mount_info = get_mount_point(device.device_node)
-                drive_info = {
-                    'device_node': device.device_node,
-                    'vendor': device.get('ID_VENDOR', 'Unknown'),
-                    'product': device.get('ID_MODEL', 'Unknown'),
-                    'mount_point': mount_info['current_mount'],
-                    'fstab_mount': mount_info['fstab_mount'],
-                    'mount_type': mount_info['mount_type']
-                }
-                connected_drives.append(drive_info)
-                
-        return connected_drives
-    
-    except Exception as e:
-        print(f"Error monitoring USB drives: {str(e)}")
-        return []
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import List, Dict
 
-def get_mount_point(device_node: str) -> Dict[str, str]:
-    """
-    Get comprehensive mounting information for a device.
-    
-    Args:
-        device_node (str): Device node path (e.g., /dev/sda1)
+import pyudev
+import numpy as np
+
+class data_handler:
+    def __init__(self, sensorName:str, extension:str ,dataPath:str, backupPath:str):
+        self.sensorName = sensorName
+        self._sensorExtension = extension
+        self.dataPath = Path(dataPath)
+        self.backupPath = Path(backupPath)
+        self._dataDirExists = False
+        self._backupDirExists = False
+        self._dataIsMounted = False
+        self._backupIsMounted = False
+        self.index = 0
+        self.generate_savepoints()
+        self.generate_filename()
+
+    def validate_savepoints(self):
+
+        def validate_directory(directory:Path) -> tuple[bool, bool]:
+            if "/mnt" in str(directory):
+                drives = self.monitor_usb_drives()
+                if drives:
+                    for drive in drives:
+                        if drive['mount_point'] in str(directory) or drive['fstab_mount'] in str(directory):
+                            isMounted = True
+                            break
+                        isMounted = False
+                else:
+                    isMounted = False
+            else:
+                isMounted = True
+
+            if isMounted: # if path is mounted
+                pathExists = os.path.exists(directory)
+            else:
+                pathExists = False
+
+            return isMounted, pathExists
         
-    Returns:
-        Dict[str, str]: Dictionary containing current_mount, fstab_mount, and mount_type
-    """
-    mount_info = {
-        'current_mount': 'Not Mounted',
-        'fstab_mount': 'Not in fstab',
-        'mount_type': 'none'
-    }
-    
-    # Check current mounts
-    try:
-        with open('/proc/mounts', 'r') as f:
-            for line in f:
-                if device_node in line:
-                    mount_info['current_mount'] = line.split()[1]
-                    mount_info['mount_type'] = 'active'
-    except Exception as e:
-        print(f"Error reading current mounts: {str(e)}")
-    
-    # Check systemd automount points
-    try:
-        result = subprocess.run(['systemctl', 'list-units', '--type=automount', '--all'],
-                              capture_output=True, text=True)
-        for line in result.stdout.splitlines():
-            if mount_info['current_mount'] in line:
-                mount_info['mount_type'] = 'automount'
-    except Exception as e:
-        print(f"Error checking systemd automounts: {str(e)}")
-    
-    # Check fstab entries
-    try:
-        with open('/etc/fstab', 'r') as f:
-            for line in f:
-                if line.startswith('#'):
-                    continue
-                if device_node in line:
-                    fields = line.split()
-                    mount_info['fstab_mount'] = fields[1]
-                    if 'x-systemd.automount' in line:
-                        mount_info['mount_type'] = 'automount'
-    except Exception as e:
-        print(f"Error reading fstab: {str(e)}")
-    
-    return mount_info
+        self._dataIsMounted, self._dataDirExists = validate_directory(self.dataPath)
+        self._backupIsMounted, self._backupDirExists = validate_directory(self.backupPath)
+            
+    def generate_savepoints(self):
 
+        def generate_directory(directory:Path, isMounted:bool, exists:bool):
+            if isMounted and not exists:
+                os.makedirs(directory)
+            
+        self.validate_savepoints()
+        generate_directory(self.dataPath, self._dataIsMounted, self._dataDirExists)
+        generate_directory(self.backupPath, self._backupIsMounted, self._backupDirExists)
+        self.validate_savepoints()
+
+    def generate_filename(self):
+        current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.index += 1
+        self.file_name = f"{self.sensorName}_data_{current_time}_{self.index}{self._sensorExtension}"
+        
+    def write_data(self, data):
+
+        if isinstance(data, str):
+            data = data.encode('utf-8')
+        elif not isinstance(data, bytes):
+            raise TypeError("Data must be string or bytes")
+        
+        if not self._dataDirExists and not self._backupDirExists:
+            raise IOError("No valid locations exist to write data")
+        
+        if self._dataDirExists:
+            dataFile = self.dataPath / self.file_name
+            dataWrite = threading.Thread(target=self._writerThread, kwargs={"data":data, "path":dataFile}, daemon=True)
+            dataWrite.start()
+
+        if self._backupDirExists:
+            backupFile = self.backupPath / self.file_name
+            backupWrite = threading.Thread(target=self._writerThread, kwargs={"data":data, "path":backupFile}, daemon=True)
+            backupWrite.start()
+
+        if self._dataDirExists:
+            dataWrite.join()
+        
+        if self._backupDirExists:
+            backupWrite.join()
+
+    def _writerThread(data, path):
+        try:
+            with open(path, "ab") as f:
+                f.write(data)
+                f.flush()
+
+        except Exception:
+            print(f"[WARNING] Failed to write to file: {path}")
+        
+
+        
+
+    def monitor_usb_drives(self) -> List[Dict[str, str]]:
+        """
+        Monitor and detect USB flash drives connected to the system.
+        
+        Returns:
+            List[Dict[str, str]]: List of dictionaries containing information about connected USB drives
+        """
+        context = pyudev.Context()
+        connected_drives = []
+        
+        try:
+            # Find all block devices that are USB storage devices
+            for device in context.list_devices(subsystem='block', ID_BUS='usb'):
+                # Check if it's a partition (real storage device)
+                if device.get('DEVTYPE') == 'partition':
+                    # Get both current mounts and fstab configurations
+                    mount_info = self.get_mount_point(device.device_node)
+                    drive_info = {
+                        'device_node': device.device_node,
+                        'vendor': device.get('ID_VENDOR', 'Unknown'),
+                        'product': device.get('ID_MODEL', 'Unknown'),
+                        'mount_point': mount_info['current_mount'],
+                        'fstab_mount': mount_info['fstab_mount'],
+                        'mount_type': mount_info['mount_type']
+                    }
+                    connected_drives.append(drive_info)
+                    
+            return connected_drives
+        
+        except Exception as e:
+            print(f"Error monitoring USB drives: {str(e)}")
+            return []
+
+    def get_mount_point(device_node: str) -> Dict[str, str]:
+        """
+        Get comprehensive mounting information for a device.
+        
+        Args:
+            device_node (str): Device node path (e.g., /dev/sda1)
+            
+        Returns:
+            Dict[str, str]: Dictionary containing current_mount, fstab_mount, and mount_type
+        """
+        mount_info = {
+            'current_mount': 'Not Mounted',
+            'fstab_mount': 'Not in fstab',
+            'mount_type': 'none'
+        }
+        
+        # Check current mounts
+        try:
+            with open('/proc/mounts', 'r') as f:
+                for line in f:
+                    if device_node in line:
+                        mount_info['current_mount'] = line.split()[1]
+                        mount_info['mount_type'] = 'active'
+        except Exception as e:
+            print(f"Error reading current mounts: {str(e)}")
+        
+        # Check systemd automount points
+        try:
+            result = subprocess.run(['systemctl', 'list-units', '--type=automount', '--all'],
+                                capture_output=True, text=True)
+            for line in result.stdout.splitlines():
+                if mount_info['current_mount'] in line:
+                    mount_info['mount_type'] = 'automount'
+        except Exception as e:
+            print(f"Error checking systemd automounts: {str(e)}")
+        
+        # Check fstab entries
+        try:
+            with open('/etc/fstab', 'r') as f:
+                for line in f:
+                    if line.startswith('#'):
+                        continue
+                    if device_node in line:
+                        fields = line.split()
+                        mount_info['fstab_mount'] = fields[1]
+                        if 'x-systemd.automount' in line:
+                            mount_info['mount_type'] = 'automount'
+        except Exception as e:
+            print(f"Error reading fstab: {str(e)}")
+        
+        return mount_info
 
 class supervisor:
-    sizeDelta = 0
-    displayed = False
+    def __init__(self, supervisorFile:str):
+        with open(supervisorFile, "r") as config:
+            configString = "".join(config.readlines())
+
+        programs = re.findall(r'\[program:[\s\S]*?\r?\n\r?\n', configString)
+        supervisorDict = {}
+        for program in programs:
+            programDict = {}
+            programLines = program.split("\n")
+            for num, line in enumerate(programLines):
+                if num == 0:
+                    programDict["program"] = re.search(r'(?<=\[program:)[^\]]+(?=\])', programLines[0]).group()
+                elif line != "":
+                    splitLines = line.split("=")
+                    programDict[splitLines[0]]=splitLines[1]
+
+            supervisorDict[programDict["program"]] = self.supervisorModule(programDict)
+
+        self.supervisorModuleDict = supervisorDict
+    class supervisorModule:
+        sizeDelta = 0
+        displayed = False
 
 
-    def __init__(self, programDict:dict):
-        self.name = programDict["program"]
-        self.shorthand = "".join(re.findall(r'(?:^|_)(\w)', self.name))
-        location = re.search(r'(?<=--data\s)[^\s]+', programDict["command"])
-        if location is not None:
-            self.location = Path(location.group())
-            self.folderSize = self._getFolderSize(self.location)
-        else:
-            self.location = None
-        self.updateTime = time.monotonic_ns()
-        self._objectInformation = programDict
-        self.getStatus()
+        def __init__(self, programDict:dict):
+            self.name = programDict["program"]
 
-    def _getFolderSize(self, folder:Path):
-        return sum(f.stat().st_size for f in folder.glob('**/*') if f.is_file())
-    
-    # Function to determine the appropriate units for folder size
-    def _get_appropriate_byte(self, fsize):
-        for funit in ['B', 'kB', 'MB', 'GB']:
-            if len(str(fsize)) > 4:
-                fsize = np.round(fsize/1024, decimals=1)
-                continue
-                
-            fsize_str = f'{fsize} {funit}/s'
-            return fsize_str
+            self.shorthand = "".join(re.findall(r'(?:^|_)(\w)', self.name))
 
-    def getStatus(self):
-        #re.findall(r'[\w:]+', text)
-        try:
-            statusData = os.popen(f"sudo supervisorctl status {self.name}").read()
-            if "RUNNING" in statusData:
-                self.status = True
-            elif "STARTING" in statusData:
-                self.status = False
-            elif "BACKOFF" in statusData:
-                self.status = False
-            elif "STOPPED" in statusData:
-                self.status = False
+            location = re.search(r'(?<=--data\s)[^\s]+', programDict["command"])
+            if location is not None:
+                self.location = Path(location.group())
+                self.folderSize = self._getFolderSize(self.location)
             else:
-                self.status = False
-        except:
-            self.status = False
+                self.location = None
+            
+            self.updateTime = time.monotonic_ns()
+            self._objectInformation = programDict
+            self.getStatus()
 
-        return self.status
-    
-    def getSizeDelta(self):
-        oldFolderSize = self.folderSize
-        oldTime = self.updateTime
-        currentFolderSize = self._getFolderSize(self.location)
-        currentTime = time.monotonic_ns()
-        sizeDelta = ((currentFolderSize-oldFolderSize)/((currentTime-oldTime)/1000000000))
-        self.sizeDelta=sizeDelta
-        self.folderSize = currentFolderSize
-        self.updateTime = currentTime
-        return sizeDelta
-
-    def generateProgramString(self):
-        status = self.getStatus()
-        if status:
-            statusString = circle
-        else:
-            statusString = cross
-
-        shorthandfmtd = "{: <4}".format(f"{self.shorthand}")
+        def _getFolderSize(self, folder:Path):
+            return sum(f.stat().st_size for f in folder.glob('**/*') if f.is_file())
         
-        sizeDelta = self.getSizeDelta()
+        # Function to determine the appropriate units for folder size
+        def _get_appropriate_byte(self, fsize):
+            for funit in ['B', 'kB', 'MB', 'GB']:
+                if len(str(fsize)) > 4:
+                    fsize = np.round(fsize/1024, decimals=1)
+                    continue
+                    
+                fsize_str = f'{fsize} {funit}/s'
+                return fsize_str
 
-        sizeString = self._get_appropriate_byte(sizeDelta)
+        def getStatus(self):
+            #re.findall(r'[\w:]+', text)
+            try:
+                statusData = os.popen(f"sudo supervisorctl status {self.name}").read()
+                if "RUNNING" in statusData:
+                    self.status = True
+                elif "STARTING" in statusData:
+                    self.status = False
+                elif "BACKOFF" in statusData:
+                    self.status = False
+                elif "STOPPED" in statusData:
+                    self.status = False
+                else:
+                    self.status = False
+            except:
+                self.status = False
 
-        return "{: <21}".format(f"{statusString} | {shorthandfmtd} | {sizeString}")
+            return self.status
+        
+        def getSizeDelta(self):
+            oldFolderSize = self.folderSize
+            oldTime = self.updateTime
+            currentFolderSize = self._getFolderSize(self.location)
+            currentTime = time.monotonic_ns()
+            sizeDelta = ((currentFolderSize-oldFolderSize)/((currentTime-oldTime)/1000000000))
+            self.sizeDelta=sizeDelta
+            self.folderSize = currentFolderSize
+            self.updateTime = currentTime
+            return sizeDelta
 
-def generateSupervisorObjects(supervisorFile:str):
-    with open(supervisorFile, "r") as config:
-        configString = "".join(config.readlines())
+        def generateProgramString(self):
+            circle = "O"
+            cross = "X"
+            status = self.getStatus()
+            if status:
+                statusString = circle
+            else:
+                statusString = cross
 
-    programs = re.findall(r'\[program:[\s\S]*?\r?\n\r?\n', configString)
-    supervisorDict = {}
-    for program in programs:
-        programDict = {}
-        programLines = program.split("\n")
-        for num, line in enumerate(programLines):
-            if num == 0:
-                programDict["program"] = re.search(r'(?<=\[program:)[^\]]+(?=\])', programLines[0]).group()
-            elif line != "":
-                splitLines = line.split("=")
-                programDict[splitLines[0]]=splitLines[1]
+            shorthandfmtd = "{: <4}".format(f"{self.shorthand}")
+            
+            sizeDelta = self.getSizeDelta()
 
-        supervisorDict[programDict["program"]] = supervisor(programDict)
+            sizeString = self._get_appropriate_byte(sizeDelta)
 
-    return supervisorDict
-
+            return "{: <21}".format(f"{statusString} | {shorthandfmtd} | {sizeString}")
+    
 class transceiver:
     MAX_QUEUE_SIZE = 1000  # Maximum number of messages to queue
     _receiveQueue = queue.Queue()
@@ -373,4 +469,3 @@ class transceiver:
             return data
         except queue.Empty:
             return None
-
