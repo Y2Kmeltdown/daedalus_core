@@ -215,7 +215,7 @@ class supervisor:
 
             supervisorDict[programDict["program"]] = self.supervisorModule(programDict)
 
-        self.supervisorModuleDict = supervisorDict
+        self.moduleDict = supervisorDict
     class supervisorModule:
         sizeDelta = 0
         displayed = False
