@@ -99,7 +99,7 @@ class data_handler:
         if self._backupDirExists:
             backupWrite.join()
 
-    def _writerThread(data, path):
+    def _writerThread(self, data, path):
         try:
             with open(path, "ab") as f:
                 f.write(data)
