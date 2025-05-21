@@ -36,6 +36,7 @@ This branch is maintained by: Sami Arja
       - [Automatic Method](#automatic-method)
       - [Manual Method](#manual-method)
   - [Make the final image (Ubuntu)](#make-the-final-image-ubuntu)
+  - [Thermal Camera Software](#thermal-camera-software)
 
 
 
@@ -351,3 +352,9 @@ Step 7: Shrink the image
 ```sh
 sudo pishrink.sh <path-to-output-image>/unshrunkdaedalus.img <path-to-output-image>/daedalus.img
 ```
+
+## Thermal Camera Software
+
+Link for software and Documentation:
+https://drive.google.com/drive/folders/1FQiud23Fac2x_jqSlKIqPT27kXt2BTkO?usp=sharing
+
