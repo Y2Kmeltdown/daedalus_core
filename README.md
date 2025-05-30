@@ -36,6 +36,7 @@ This branch is maintained by: Sami Arja
       - [Automatic Method](#automatic-method)
       - [Manual Method](#manual-method)
   - [Make the final image (Ubuntu)](#make-the-final-image-ubuntu)
+  - [Thermal Camera setup](#thermal-camera-setup)
   - [Thermal Camera Software](#thermal-camera-software)
 
 
@@ -352,6 +353,36 @@ Step 7: Shrink the image
 ```sh
 sudo pishrink.sh <path-to-output-image>/unshrunkdaedalus.img <path-to-output-image>/daedalus.img
 ```
+
+## Thermal Camera setup
+
+Connect Pi to Wifi
+
+`sudo raspi-config`
+
+Add the following Wifi details:
+
+Username: ICNS
+Password: eip7ai-bughi9
+
+Find the Pi new IP on the ICNS network:
+
+`hostname -I`
+
+This should give something like this (use the second IP to SSH into the Pi):
+192.168.1.105 10.42.0.87
+
+
+Set a static IP for the IR camera
+```sh
+sudo ip addr add 169.254.100.1/16 dev eth0
+sudo ip link set dev eth0 up
+```
+
+Test the IR camera output:
+
+.`/06-multi-save -o ./out_frames -f 5`
+
 
 ## Thermal Camera Software
 
