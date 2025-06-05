@@ -91,8 +91,6 @@ def record_5Mins(serial:str):
                 break
 
 if __name__ == "__main__":
-    dirname = pathlib.Path(__file__).resolve().parent
-
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument(
         "serial", 
@@ -102,7 +100,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--data",
-        default=str(dirname / "recordings"),
+        default="/usr/local/daedalus/data",
         help="Path of the directory where recordings are stored",
     )
     parser.add_argument(

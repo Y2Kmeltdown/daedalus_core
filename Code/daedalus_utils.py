@@ -263,12 +263,20 @@ class supervisor:
 
             self.shorthand = "".join(re.findall(r'(?:^|_)(\w)', self.name))
 
+            # Get Main Save Location
             location = re.search(r'(?<=--data\s)[^\s]+', programDict["command"])
             if location is not None:
                 self.location = Path(location.group())
                 self.folderSize = self._getFolderSize(self.location)
             else:
                 self.location = None
+
+            # Get Socket Location
+            sock = re.search(r'(?<=--socket\s)[^\s]+', programDict["command"])
+            if sock is not None:
+                self.sock = Path(location.group())
+            else:
+                self.sock = None
             
             self.updateTime = time.monotonic_ns()
             self._objectInformation = programDict
