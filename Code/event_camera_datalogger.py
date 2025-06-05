@@ -109,6 +109,11 @@ if __name__ == "__main__":
         help="Path of the directory where recordings are backed up",
     )
     parser.add_argument(
+        "--socket",
+        default=str("/tmp/event.sock"),
+        help="Path of the directory where recordings are backed up",
+    )
+    parser.add_argument(
         "--measurement-interval",
         default=0.1,
         type=float,

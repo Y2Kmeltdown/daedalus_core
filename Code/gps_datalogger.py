@@ -120,6 +120,11 @@ if __name__ == '__main__':
         help="Path of the directory where recordings are backed up",
     )
     parser.add_argument(
+        "--socket",
+        default=str("/tmp/gps.sock"),
+        help="Path of the directory where recordings are backed up",
+    )
+    parser.add_argument(
         "--record_time",
         default=300,
         help="Time in seconds for how long to record to a single file"

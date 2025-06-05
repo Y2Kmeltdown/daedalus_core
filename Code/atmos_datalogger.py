@@ -199,6 +199,11 @@ if __name__ == "__main__":
             type=str
         )
     parser.add_argument(
+        "--socket",
+        default=str("/tmp/atmos.sock"),
+        help="Path of the directory where recordings are backed up",
+    )
+    parser.add_argument(
         "--record_time",
         default=300,
         help="Time in seconds for how long to record to a single file"
