@@ -36,8 +36,11 @@ This branch is maintained by: Sami Arja
       - [Automatic Method](#automatic-method)
       - [Manual Method](#manual-method)
   - [Make the final image (Ubuntu)](#make-the-final-image-ubuntu)
-  - [Thermal Camera setup](#thermal-camera-setup)
-  - [Thermal Camera Software](#thermal-camera-software)
+  - [Thermal/IR camera](#thermalir-camera)
+    - [Configure Thermal/IR Camera](#configure-thermalir-camera)
+    - [Install Aravis CLI](#install-aravis-cli)
+    - [Assign static IP address](#assign-static-ip-address)
+    - [Thermal/IR camera SDK from manufacturer](#thermalir-camera-sdk-from-manufacturer)
 
 
 
@@ -354,7 +357,10 @@ Step 7: Shrink the image
 sudo pishrink.sh <path-to-output-image>/unshrunkdaedalus.img <path-to-output-image>/daedalus.img
 ```
 
-## Thermal Camera setup
+
+## Thermal/IR camera
+
+### Configure Thermal/IR Camera
 
 Connect Pi to Wifi
 
@@ -365,13 +371,37 @@ Add the following Wifi details:
 Username: ICNS
 Password: eip7ai-bughi9
 
-Find the Pi new IP on the ICNS network:
+Find the Pi new IP on the ICNS network (this need to be done before disconnecting the ethernet cable from the Pi):
 
 `hostname -I`
 
-This should give something like this (use the second IP to SSH into the Pi):
+This should give something like this (1st IP is for the ethernet and the 2nd IP is for the wifi):
 192.168.1.105 10.42.0.87
 
+### Install Aravis CLI
+Aravis main repo: https://github.com/AravisProject/aravis
+Aravis additional CLI: https://github.com/AravisProject/aravis-c-examples
+
+```sh
+sudo apt install libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+sudo apt-get install python3 ninja-build meson
+sudo apt-get install libxml2-dev
+sudo apt install cmake
+
+cd aravis/
+meson setup build
+cd build
+ninja
+ninja install
+
+cd aravis-c-examples/
+meson setup build
+cd build
+ninja
+ninja install
+```
+
+### Assign static IP address
 
 Set a static IP for the IR camera
 ```sh
@@ -384,7 +414,7 @@ Test the IR camera output:
 .`/06-multi-save -o ./out_frames -f 5`
 
 
-## Thermal Camera Software
+### Thermal/IR camera SDK from manufacturer 
 
 Link for software and Documentation:
 https://drive.google.com/drive/folders/1FQiud23Fac2x_jqSlKIqPT27kXt2BTkO?usp=sharing
