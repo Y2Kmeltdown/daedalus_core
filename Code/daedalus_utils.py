@@ -6,6 +6,7 @@ import threading
 import queue
 import re
 import os
+import socket
 
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -15,15 +16,18 @@ import pyudev
 import numpy as np
 
 class data_handler:
-    def __init__(self, sensorName:str, extension:str ,dataPath:str, backupPath:str):
+    def __init__(self, sensorName:str, extension:str ,dataPath:str, backupPath:str, socketPath:str):
         self.sensorName = sensorName
         self._sensorExtension = extension
         self.dataPath = Path(dataPath)
         self.backupPath = Path(backupPath)
+        self.socketPath = Path(socketPath)
         self._dataDirExists = False
         self._backupDirExists = False
+        self._socketDirExists = False
         self._dataIsMounted = False
         self._backupIsMounted = False
+        self._socketIsMounted = False
         self.index = 0
         self.generate_savepoints()
         self.generate_filename()
@@ -49,10 +53,20 @@ class data_handler:
             else:
                 pathExists = False
 
+            if ".sock" in str(directory):
+                try:
+                    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+                        s.connect(directory)
+                    pathExists = True
+                except:
+                    pathExists = False
             return isMounted, pathExists
+        
+        
         
         self._dataIsMounted, self._dataDirExists = validate_directory(self.dataPath)
         self._backupIsMounted, self._backupDirExists = validate_directory(self.backupPath)
+        self._socketIsMounted, self._socketDirExists = validate_directory(self.socketPath)
             
     def generate_savepoints(self):
 
@@ -63,6 +77,7 @@ class data_handler:
         self.validate_savepoints()
         generate_directory(self.dataPath, self._dataIsMounted, self._dataDirExists)
         generate_directory(self.backupPath, self._backupIsMounted, self._backupDirExists)
+        generate_directory(self.socketPath, self._socketIsMounted, self._socketDirExists)
         self.validate_savepoints()
 
     def generate_filename(self):
@@ -86,24 +101,30 @@ class data_handler:
         elif not isinstance(data, bytes):
             raise TypeError("Data must be string or bytes")
         
-        if not self._dataDirExists and not self._backupDirExists:
-            raise IOError("No valid locations exist to write data")
-        
-        if self._dataDirExists:
-            dataFile = self.dataPath / self.file_name
-            dataWrite = threading.Thread(target=self._writerThread, kwargs={"data":data, "path":dataFile}, daemon=True)
-            dataWrite.start()
+        if self._socketDirExists:
+            socketWrite = threading.Thread(target=self._socketThread, kwargs={"data":data, "path":self.socketPath}, daemon=True)
+            socketWrite.start()
+            #TODO Make this a bit neater
+            socketWrite.join()
+        else:
+            if not self._dataDirExists and not self._backupDirExists:
+                raise IOError("No valid locations exist to write data")
+            
+            if self._dataDirExists:
+                dataFile = self.dataPath / self.file_name
+                dataWrite = threading.Thread(target=self._writerThread, kwargs={"data":data, "path":dataFile}, daemon=True)
+                dataWrite.start()
 
-        if self._backupDirExists:
-            backupFile = self.backupPath / self.file_name
-            backupWrite = threading.Thread(target=self._writerThread, kwargs={"data":data, "path":backupFile}, daemon=True)
-            backupWrite.start()
+            if self._backupDirExists:
+                backupFile = self.backupPath / self.file_name
+                backupWrite = threading.Thread(target=self._writerThread, kwargs={"data":data, "path":backupFile}, daemon=True)
+                backupWrite.start()
 
-        if self._dataDirExists:
-            dataWrite.join()
-        
-        if self._backupDirExists:
-            backupWrite.join()
+            if self._dataDirExists:
+                dataWrite.join()
+            
+            if self._backupDirExists:
+                backupWrite.join()
 
     def _writerThread(self, data, path):
         try:
@@ -113,6 +134,16 @@ class data_handler:
 
         except Exception:
             print(f"[WARNING] Failed to write to file: {path}")
+            self.validate_savepoints()
+
+    def _socketThread(self, data, socketPath):
+        try:
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+                s.connect(socketPath)
+                s.sendall(data)
+        except Exception:
+            print(f"[WARNING] Failed to write to socket: {socketPath}")
+            self.validate_savepoints()
         
 
         
