@@ -43,7 +43,7 @@ def bmi270Init(i2c_address):
 	
     return BMI270_1
 
-def read_imu(i2c_address, data_path, backup_path, socket_path, record_time):
+def read_imu(i2c_address, imuDataHandler, record_time):
 
     try:
         i2c = board.I2C()  # uses board.SCL and board.SDA
@@ -59,14 +59,6 @@ def read_imu(i2c_address, data_path, backup_path, socket_path, record_time):
         bmi270 = False
     
     print("Starting IMU Reader...")
-
-    imuData = daedalus_utils.data_handler(
-        sensorName="imu", 
-        extension = ".txt", 
-        dataPath=data_path, 
-        backupPath=backup_path,
-        socketPath=socket_path
-        )
     
     buffer = []
     last_save_time = datetime.now()
@@ -95,7 +87,7 @@ def read_imu(i2c_address, data_path, backup_path, socket_path, record_time):
             if datetime.now() - last_buffer_save >= buffer_save_interval and buffer:
                 print(f"[INFO] Writing buffer at {datetime.now().strftime('%H:%M:%S')}...")
                 
-                imuData.write_data(buffer)
+                imuDataHandler.write_data(buffer)
 
                 buffer.clear()  # Clear buffer after writing
                 last_buffer_save = datetime.now()
@@ -104,8 +96,8 @@ def read_imu(i2c_address, data_path, backup_path, socket_path, record_time):
             if (datetime.now() - last_save_time).total_seconds() >= record_time:
                 print(f"\n[INFO] Creating new file at {datetime.now().strftime('%H:%M:%S')}")
                 last_save_time = datetime.now()
-                imuData.generate_filename()
-                imuData.validate_savepoints()
+                imuDataHandler.generate_filename()
+                imuDataHandler.validate_savepoints()
 
             time.sleep(1)  # Sleep for 1 second between readings
 
@@ -140,4 +132,13 @@ if __name__ == '__main__':
         help="Time in seconds for how long to record to a single file"
     )
     args = parser.parse_args()
-    read_imu(args.i2c_address, args.data, args.backup, args.socket, args.record_time)
+    imuDataHandler = daedalus_utils.data_handler(
+        sensorName="imu", 
+        extension = ".txt", 
+        dataPath=args.data, 
+        backupPath=args.backup,
+        socketPath=args.socket
+        )
+    read_imu(args.i2c_address, imuDataHandler, args.record_time)
+
+    

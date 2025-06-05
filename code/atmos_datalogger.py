@@ -114,16 +114,8 @@ def atmosInit(t_sample:int = 1, p_sample:int = 1, h_sample:int = 1, mode:str = "
 
     return ctrl_meas_WORD, ctrl_hum_WORD, config_WORD, measurement_T
 
-def readAtmos(i2c_address, data_path, backup_path, socket_path, record_time, ctrl_meas_WORD, ctrl_hum_WORD, config_WORD, measurement_T):
+def readAtmos(i2c_address, atmosDataHandler, record_time, ctrl_meas_WORD, ctrl_hum_WORD, config_WORD, measurement_T):
 
-    atmosData = daedalus_utils.data_handler(
-        sensorName=sensorName, 
-        extension = ".txt", 
-        dataPath=data_path, 
-        backupPath=backup_path,
-        socketPath=socket_path
-        )
-    
     buffer = []
     last_save_time = datetime.now()
     buffer_save_interval = timedelta(seconds=10)  # Save buffer every 10 seconds
@@ -168,7 +160,7 @@ def readAtmos(i2c_address, data_path, backup_path, socket_path, record_time, ctr
             if datetime.now() - last_buffer_save >= buffer_save_interval and buffer:
                 print(f"[INFO] Writing buffer at {datetime.now().strftime('%H:%M:%S')}...")
                 
-                atmosData.write_data(buffer)
+                atmosDataHandler.write_data(buffer)
 
                 buffer.clear()  # Clear buffer after writing
                 last_buffer_save = datetime.now()
@@ -177,8 +169,8 @@ def readAtmos(i2c_address, data_path, backup_path, socket_path, record_time, ctr
             if (datetime.now() - last_save_time).total_seconds() >= record_time:
                 print(f"\n[INFO] Creating new file at {datetime.now().strftime('%H:%M:%S')}")
                 last_save_time = datetime.now()
-                atmosData.generate_filename()
-                atmosData.validate_savepoints()
+                atmosDataHandler.generate_filename()
+                atmosDataHandler.validate_savepoints()
 
     except (ValueError, IOError) as err:
         print(f"[ERROR] {err}")
@@ -216,6 +208,14 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     ctrl_meas_WORD, ctrl_hum_WORD, config_WORD, measurement_T = atmosInit()
+
+    atmosDataHandler = daedalus_utils.data_handler(
+        sensorName=sensorName, 
+        extension = ".txt", 
+        dataPath=args.data, 
+        backupPath=args.backup,
+        socketPath=args.socket
+        )
     
-    readAtmos(int(args.i2c_address, 16), args.data, args.backup, args.socket, args.record_time, ctrl_meas_WORD, ctrl_hum_WORD, config_WORD, measurement_T)
+    readAtmos(int(args.i2c_address, 16), atmosDataHandler, args.record_time, ctrl_meas_WORD, ctrl_hum_WORD, config_WORD, measurement_T)
 
