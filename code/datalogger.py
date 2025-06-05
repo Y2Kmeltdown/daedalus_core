@@ -10,6 +10,11 @@ import queue
 import os
 
 
+import socket, time
+from threading import Thread
+
+
+
 def socketServer(socketFile:str, socketQueue:queue.Queue):
     if os.path.exists(socketFile):
         os.remove(socketFile)  
@@ -20,7 +25,10 @@ def socketServer(socketFile:str, socketQueue:queue.Queue):
         server.listen(1)
         conn, addr = server.accept()
         data = conn.recv(1024)
-        socketQueue.put(data)
+        print(data)
+        if data is not None:
+            socketQueue.put(data)
+
 
 # Set up client to read data from multiple servers possible independent threads based on sockets found
 # Open File on USB and SD Card
@@ -78,9 +86,13 @@ if __name__ == "__main__":
     socketQueues = []
     for sock in socketList:
         socketQueue = queue.Queue()
-        socketThread = Thread(target=socketServer, kwargs={"socketFile":sock, "socketQueue":socketQueue}, daemon=True)
+        socketFile = str(sock)
+        socketThread = Thread(target=socketServer, kwargs={"socketFile":socketFile, "socketQueue":socketQueue}, daemon=True)
         socketThread.start()
         socketThreads.append(socketThread)
         socketQueues.append(socketQueue)
+
+    while(True):
+        pass
     
 

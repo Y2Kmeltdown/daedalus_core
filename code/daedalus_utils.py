@@ -16,12 +16,15 @@ import pyudev
 import numpy as np
 
 class data_handler:
-    def __init__(self, sensorName:str, extension:str ,dataPath:str, backupPath:str, socketPath:str):
+    def __init__(self, sensorName:str, extension:str ,dataPath:str, backupPath:str, socketPath:str = None):
         self.sensorName = sensorName
         self._sensorExtension = extension
         self.dataPath = Path(dataPath)
         self.backupPath = Path(backupPath)
-        self.socketPath = Path(socketPath)
+        if socketPath:
+            self.socketPath = Path(socketPath)
+        else:
+            self.socketPath = None
         self._dataDirExists = False
         self._backupDirExists = False
         self._socketDirExists = False
@@ -56,17 +59,19 @@ class data_handler:
             if ".sock" in str(directory):
                 try:
                     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
-                        s.connect(directory)
+                        s.connect(str(directory))
                     pathExists = True
                 except:
                     pathExists = False
+   
             return isMounted, pathExists
         
         
         
         self._dataIsMounted, self._dataDirExists = validate_directory(self.dataPath)
         self._backupIsMounted, self._backupDirExists = validate_directory(self.backupPath)
-        self._socketIsMounted, self._socketDirExists = validate_directory(self.socketPath)
+        if self.socketPath:
+            self._socketIsMounted, self._socketDirExists = validate_directory(self.socketPath)
             
     def generate_savepoints(self):
 
@@ -77,7 +82,6 @@ class data_handler:
         self.validate_savepoints()
         generate_directory(self.dataPath, self._dataIsMounted, self._dataDirExists)
         generate_directory(self.backupPath, self._backupIsMounted, self._backupDirExists)
-        generate_directory(self.socketPath, self._socketIsMounted, self._socketDirExists)
         self.validate_savepoints()
 
     def generate_filename(self):
@@ -102,10 +106,15 @@ class data_handler:
             raise TypeError("Data must be string or bytes")
         
         if self._socketDirExists:
-            socketWrite = threading.Thread(target=self._socketThread, kwargs={"data":data, "path":self.socketPath}, daemon=True)
+            try:
+                socketWrite.join()
+            except:
+                pass
+            socketPath = str(self.socketPath)
+            socketWrite = threading.Thread(target=self._socketThread, kwargs={"data":data, "socketPath":socketPath}, daemon=True)
             socketWrite.start()
-            #TODO Make this a bit neater
-            socketWrite.join()
+            #TODO Move this join somewhere else
+            #socketWrite.join()
         else:
             if not self._dataDirExists and not self._backupDirExists:
                 raise IOError("No valid locations exist to write data")
@@ -144,9 +153,6 @@ class data_handler:
         except Exception:
             print(f"[WARNING] Failed to write to socket: {socketPath}")
             self.validate_savepoints()
-        
-
-        
 
     def monitor_usb_drives(self) -> List[Dict[str, str]]:
         """
@@ -274,7 +280,7 @@ class supervisor:
             # Get Socket Location
             sock = re.search(r'(?<=--socket\s)[^\s]+', programDict["command"])
             if sock is not None:
-                self.sock = Path(location.group())
+                self.sock = Path(sock.group())
             else:
                 self.sock = None
             
