@@ -55,15 +55,9 @@ def packetRepairer(packet: bytearray, repairLimit: int = 1) -> tuple[bytes, bool
 
     return packet, False, False
 
-def run(serialPort, data_path, backup_path, record_time):
+def run(serialPort, gpsDataHandler, record_time):
     port = serial.Serial(serialPort, baudrate=38400, timeout=1)
 
-    gpsData = daedalus_utils.data_handler(
-        sensorName=f"gps",
-        extension=".txt",
-        dataPath=data_path,
-        backupPath=backup_path
-        )
     
     buffer = []
     last_save_time = datetime.now()
@@ -89,7 +83,7 @@ def run(serialPort, data_path, backup_path, record_time):
             if datetime.now() - last_buffer_save >= buffer_save_interval and buffer:
                 print(f"[INFO] Writing buffer at {datetime.now().strftime('%H:%M:%S')}...")
                 
-                gpsData.write_data(buffer)
+                gpsDataHandler.write_data(buffer)
 
                 buffer.clear()  # Clear buffer after writing
                 last_buffer_save = datetime.now()
@@ -98,8 +92,8 @@ def run(serialPort, data_path, backup_path, record_time):
             if (datetime.now() - last_save_time).total_seconds() >= record_time:
                 print(f"\n[INFO] Creating new file at {datetime.now().strftime('%H:%M:%S')}")
                 last_save_time = datetime.now()
-                gpsData.generate_filename()
-                gpsData.validate_savepoints()
+                gpsDataHandler.generate_filename()
+                gpsDataHandler.validate_savepoints()
 
     except (ValueError, IOError) as err:
         print(f"[ERROR] {err}")
@@ -131,9 +125,16 @@ if __name__ == '__main__':
     )
     args = parser.parse_args()
 
+    gpsDataHandler = daedalus_utils.data_handler(
+        sensorName=f"gps",
+        extension=".txt",
+        dataPath=args.data,
+        backupPath=args.backup,
+        socketPath=args.socket
+        )
 
     try:
-        run(args.port, args.data, args.backup, args.record_time)
+        run(args.port, gpsDataHandler, args.record_time)
     except (KeyboardInterrupt, SystemExit):
         print("\nEnding gps_reader.py")
         sys.exit(0)
