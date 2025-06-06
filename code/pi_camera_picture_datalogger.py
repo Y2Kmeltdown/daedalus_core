@@ -3,36 +3,15 @@ import datetime
 import json
 import argparse
 from pathlib import Path
+
 from picamera2 import Picamera2
 from libcamera import controls
+from PIL import Image
+import io
+
 import os
 
-dirname = Path(__file__).resolve().parent
-
-parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument("camera", help="Camera number (for example 0 or 1)")
-parser.add_argument(
-    "--data",
-    default=str(dirname / "recordings"),
-    help="Path of the directory where recordings are stored",
-)
-parser.add_argument(
-    "--backup",
-    default="/mnt/data",  # Default root path for backup
-    help="Path of the directory where recordings are backed up",
-)
-parser.add_argument(
-    "--timer",
-    default=10,
-    type=int,
-    help="Time in seconds between snapshots"
-)
-parser.add_argument(
-    "--config",
-    type=str,
-    help="Path to configuration json for camera properties",
-)
-args = parser.parse_args()
+import daedalus_utils
 
 def check_request_timestamp(request, check_time):
     md = request.get_metadata()
@@ -40,50 +19,6 @@ def check_request_timestamp(request, check_time):
     if exposure_start_time < check_time:
         print("ERROR: request captured too early by", check_time - exposure_start_time, "nanoseconds")
 
-def save_snapshot(data_path: str, backup_path: str, filename: str, imgMetadata: dict, request):
-    # Save to data directory
-    try:
-        with open(f'{data_path}/{filename}.json', 'w') as f:
-            f.write(json.dumps(imgMetadata))
-        print(f'Metadata saved to {data_path}/{filename}.json', flush=True)
-        request.save('main', f'{data_path}/{filename}.png')
-        print(f'Snapshot saved to {data_path}/{filename}.png', flush=True)
-    except Exception as e:
-        print(f"Error saving to data directory: {e}", flush=True)
-
-    # Save to backup directory if available
-    #if is_backup_available(backup_path):
-    try:
-        Path(backup_path).mkdir(parents=True, exist_ok=True)
-        with open(f'{backup_path}/{filename}.json', 'w') as f:
-            f.write(json.dumps(imgMetadata))
-        print(f'Metadata saved to {backup_path}/{filename}.json', flush=True)
-        request.save('main', f'{backup_path}/{filename}.png')
-        print(f'Snapshot saved to {backup_path}/{filename}.png', flush=True)
-    except Exception as e:
-        print(f"Error saving to backup directory: {e}", flush=True)
-    #else:
-        #print("Backup directory not available. Saving to SD card only.", flush=True)
-
-def snapshot(camera: Picamera2, data_path: str, backup_path: str):
-    timestr = time.strftime("%Y%m%d-%H%M%S")
-    ct = datetime.datetime.now()
-    check_time = time.monotonic_ns() + 5e8
-    job = camera.capture_request(flush=check_time, wait=False)
-
-    request = camera.wait(job)
-    check_request_timestamp(request, check_time)
-
-
-    imgMetadata = {
-        "filename": f"cam_{camera.camera_idx}_image_{timestr}.png",
-        "timestamp": str(ct),
-        "timestamp(ns)": check_time
-    }
-
-    # Save snapshot to both data and backup, passing the request object
-    save_snapshot(data_path, backup_path, f"cam_{camera.camera_idx}_image_{timestr}", imgMetadata, request)
-    request.release()
 
 def cameraControls(camera: Picamera2, jsonConfig: str):
     if jsonConfig is not None:
@@ -95,41 +30,103 @@ def cameraControls(camera: Picamera2, jsonConfig: str):
             for setting, value in settings.items():
                 camera.set_controls({setting: value})
 
-# def is_backup_available(backup_path: str) -> bool:
-#     # Check if the path exists and is mounted
-#     try:
-#         return Path(backup_path).exists() and os.path.ismount(backup_path)
-#     except Exception as e:
-#         print(f"Error checking backup availability: {e}", flush=True)
-#         return False
-
-if __name__ == "__main__":
-    Path(args.data).mkdir(parents=True, exist_ok=True)
-    picam = Picamera2(int(args.camera))
+def cameraHandler(camID, piCamDataHandler:daedalus_utils.data_handler, config):
+    picam = Picamera2(camID)
     config = picam.create_still_configuration()
     picam.configure(config)
+
+    print(f"[INFO] {piCamDataHandler.sensorName} Starting snapshots")
     picam.start()
     time.sleep(1)
-    cameraControls(picam, args.config)
-
+    #cameraControls(picam, config)
     time.sleep(2)
-
-    # backup_connected = False
-
     while True:
         try:
-            snapshot(picam, args.data, args.backup)
+            data = io.BytesIO()
+            timestr = time.strftime("%Y%m%d-%H%M%S")
+            ct = datetime.datetime.now()
+            check_time = time.monotonic_ns() + 5e8
+            picam.capture_file(data, format='png')
+
+            imgMetadata = {
+                "filename": piCamDataHandler.file_name,
+                "timestamp": str(ct),
+                "timestamp(ns)": check_time
+            }
+
+            data.seek(0)  # Ensure you're at the beginning of the BytesIO object
+            chunk_size = 4096  # Define a suitable chunk size
+            bytesList = []
+            while True:
+                chunk = data.read(chunk_size)
+                if not chunk:
+                    break  # End of data
+                bytesList.append(chunk)
+
+            piCamDataHandler.write_data(bytesList, now=True)
+
+            
         except Exception as e:
             print(f"Error during snapshot capture: {e}", flush=True)
 
-        # # Check backup drive status
-        # if is_backup_available(args.backup):
-        #     if not backup_connected:
-        #         print("Backup drive reconnected. Resuming saving to USB.", flush=True)
-        #         backup_connected = True
-        # else:
-        #     if backup_connected:
-        #         print("Backup drive disconnected. Saving to SD card only.", flush=True)
-        #         backup_connected = False
+        time.sleep(piCamDataHandler.record_time)
 
-        time.sleep(args.timer)
+if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument(
+        "--camera", 
+        default="0",
+        help="Camera number (for example 0 or 1)")
+    parser.add_argument(
+        "--data",
+        default="/home/eventide/daedalus_core/data",
+        help="Path of the directory where recordings are stored",
+        )
+    parser.add_argument(
+        "--backup",
+        default="/mnt/data/pi_picture",  # Default root path for backup
+        help="Path of the directory where recordings are backed up",
+        )
+    parser.add_argument(
+        "--timer",
+        default=10,
+        type=int,
+        help="Time in seconds between snapshots"
+    )
+    parser.add_argument(
+        "--socket",
+        default=str("/tmp/piImage.sock"),
+        help="Path of the directory where recordings are backed up",
+    )
+    parser.add_argument(
+        "--config",
+        type=str,
+        help="Path to configuration json for camera properties",
+    )
+    args = parser.parse_args()
+
+    # picam = Picamera2(int(args.camera))
+    # config = picam.create_still_configuration()
+    # picam.configure(config)
+
+    # picam.start()
+    # time.sleep(1)
+    # cameraControls(picam, args.config)
+    # time.sleep(2)
+
+    piCamDataHandler = daedalus_utils.data_handler(
+        sensorName=f"piCamera{args.camera}",
+        extension=".png",
+        dataPath=args.data,
+        backupPath=args.backup,
+        recordingTime=args.timer,
+        socketPath=args.socket
+    )
+
+    cameraHandler(
+        int(args.camera),
+        piCamDataHandler,
+        args.config
+    )
+

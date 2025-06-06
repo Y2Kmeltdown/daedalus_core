@@ -116,7 +116,7 @@ def atmosInit(t_sample:int = 1, p_sample:int = 1, h_sample:int = 1, mode:str = "
 
 def readAtmos(i2c_address, atmosDataHandler, ctrl_meas_WORD, ctrl_hum_WORD, config_WORD, measurement_T):
 
-    print("Starting data logging...")
+    print(f"[INFO] {atmosDataHandler.sensorName} Starting data logging")
 
     i2cbus.write_byte_data(i2c_address,r_dict["reset_REG"],reset_WORD)
 

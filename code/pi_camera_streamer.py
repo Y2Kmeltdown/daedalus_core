@@ -84,7 +84,10 @@ class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
     daemon_threads = True
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument("camera", help="Camera number (for example 0 or 1)")
+parser.add_argument(
+    "--camera", 
+    default=0,
+    help="Camera number (for example 0 or 1)")
 parser.add_argument(
     "--port",
     default=8080,

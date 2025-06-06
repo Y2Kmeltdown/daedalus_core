@@ -119,9 +119,9 @@ class data_handler:
 
         if isinstance(data, list):
             if isinstance(data[0], bytes):
-                data = b"\n".join(data)
+                data = b"".join(data)
             elif isinstance(data[0], str):
-                data = "\n".join(data)
+                data = "".join(data)
             else:
                 raise TypeError("Data within a list must be string or bytes")
 

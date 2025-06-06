@@ -65,10 +65,12 @@ class StreamHandler:
             await response.write(b"\r\n")
 
 class Camera:
-    def __init__(self, idx, p_output:Pipe, camScale:int = 1):
+    def __init__(self, idx, p_output, width, height, camScale:int = 1):
         self._idx = idx
         
         self.scale = camScale
+        self.width = width
+        self.height = height
         #self.clear_frame()
         self.framepipe = p_output
 
@@ -118,33 +120,36 @@ def eventProducer(p_input):
             print(f"Successfully started EVK4 {args.serial}")
 
             for status, packet in device:
+                #print(packet)
 
                 p_input.send(packet)
                 # if killer.kill_now:
                 #     break
 
-def eventAccumulator(event_input, frame_output, dims):
+def eventAccumulator(event_out, frame_in, dims):
     frame = np.zeros(
-        (dims[1], dims(0)),
+        (dims[1], dims[0]),
         dtype=np.float32,
     )
     oldTime = time.monotonic_ns()
-    try:
-        while True:
-            packet = event_input.recv()
-            frame[
-                packet["dvs_events"]["y"],
-                packet["dvs_events"]["x"],
-            ] = 255
-            if time.monotonic_ns()-oldTime >= (1/50)*1000000000:
-                frame_output.send(frame)
-                frame = np.zeros(
-                    (dims[1], dims(0)),
-                    dtype=np.float32,
-                )
-                oldTime = time.monotonic_ns()
-    except:
-        logger.warning("Accumulator Failed")
+    # try:
+    while True:
+        packet = event_out.recv()
+        #print(packet)
+        frame[
+            packet["dvs_events"]["y"],
+            packet["dvs_events"]["x"],
+        ] = 255
+        if time.monotonic_ns()-oldTime >= (1/50)*1000000000:
+            #print(frame)
+            frame_in.send(frame)
+            frame = np.zeros(
+                (dims[1], dims[0]),
+                dtype=np.float32,
+            )
+            oldTime = time.monotonic_ns()
+    # except:
+    #     logger.warning("Accumulator Failed")
     
 
 if __name__ == "__main__":
@@ -156,10 +161,13 @@ if __name__ == "__main__":
     )
 
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("serial", help="Camera serial number (for example 00050423)")
+    parser.add_argument(
+        "--serial", 
+        default="00051501",
+        help="Camera serial number (for example 00050423)")
     parser.add_argument(
         "--port",
-        default=8000,
+        default=8080,
         type=int,
         help="Port at which server is available on"
     )
@@ -172,20 +180,23 @@ if __name__ == "__main__":
     event_output, event_input = Pipe()
 
     frame_output, frame_input = Pipe()
+    #frameQueue = queue.LifoQueue()
     
     eventProcess = Process(target=eventProducer, args=(event_input, ), daemon=True)   
 
-    frameProcess = Process(target=eventProducer, args=(frame_input,event_output,(cam_width, cam_height) ), daemon=True) 
+    frameProcess = Process(target=eventAccumulator, args=(event_output, frame_input,(cam_width, cam_height) ), daemon=True) 
     
-    cam = Camera(0, frame_output, camScale=2)
+    cam = Camera(0, frame_output, height=cam_height, width=cam_width, camScale=1)
     server = MjpegServer(cam=cam, port=args.port)
 
     try:
         eventProcess.start()
+        frameProcess.start()
         server.start()
     except KeyboardInterrupt:
         logger.warning("Keyboard Interrupt, exiting...")
     finally:
         eventProcess.join()
+        frameProcess.join()
         server.stop()
         cam.stop()
