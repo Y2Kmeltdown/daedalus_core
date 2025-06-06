@@ -56,16 +56,11 @@ def packetRepairer(packet: bytearray, repairLimit: int = 1) -> tuple[bytes, bool
 
     return packet, False, False
 
-def run(gpsTransciever:daedalus_utils.transceiver , gpsDataHandler:daedalus_utils.data_handler, record_time:int):
+def run(gpsTransciever:daedalus_utils.transceiver , gpsDataHandler:daedalus_utils.data_handler):
     #port = serial.Serial(serialPort, baudrate=38400, timeout=1)
 
     
     buffer = []
-    last_save_time = datetime.now()
-    buffer_save_interval = timedelta(seconds=10)  # Save buffer every 10 seconds
-    last_buffer_save = datetime.now()
-    EOM = False
-
     print("Starting data logging...")
 
     try:
@@ -73,31 +68,14 @@ def run(gpsTransciever:daedalus_utils.transceiver , gpsDataHandler:daedalus_util
             gps_data = gpsTransciever.receive()
 
             if gps_data is not None:
-                if gps_data[0:6] == b'$GNGLL':
-                    EOM = True
-                #print(gps_data)
-                
                 packet, status, repair = packetRepairer(gps_data)
                 if status:
-                    
                     packet_data = packet + b'\r\n'
-                    
                     buffer.append(bytes(packet_data))
+                    if packet_data[0:6] == b'$GNGLL':
+                        gpsDataHandler.write_data(buffer)
+                        buffer = []
 
-            if EOM and buffer:
-                print(f"[INFO] Writing buffer at {datetime.now().strftime('%H:%M:%S')}...")
-                gpsDataHandler.write_data(buffer)
-
-                buffer.clear()  # Clear buffer after writing
-                last_buffer_save = datetime.now()
-                EOM = False
-
-            # Create a new file every 5 minutes
-            if (datetime.now() - last_save_time).total_seconds() >= record_time:
-                print(f"\n[INFO] Creating new file at {datetime.now().strftime('%H:%M:%S')}")
-                last_save_time = datetime.now()
-                gpsDataHandler.generate_filename()
-                gpsDataHandler.validate_savepoints()
     except (KeyboardInterrupt, SystemExit):
         print("Stopping GPS Reader.")
 
@@ -135,6 +113,7 @@ if __name__ == '__main__':
         sensorName=f"gps",
         extension=".txt",
         dataPath=args.data,
+        recordingTime=args.record_time,
         backupPath=args.backup,
         socketPath=args.socket
         )
@@ -142,7 +121,7 @@ if __name__ == '__main__':
     gpsTransciever = daedalus_utils.transceiver(args.port, 38400)
 
     try:
-        run(gpsTransciever, gpsDataHandler, args.record_time)
+        run(gpsTransciever, gpsDataHandler)
     except (KeyboardInterrupt, SystemExit):
         print("\nEnding gps_reader.py")
         sys.exit(0)

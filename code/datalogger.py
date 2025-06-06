@@ -28,6 +28,7 @@ def socketServer(socketFile:str, socketQueue:queue.Queue):
         print(data)
         if data is not None:
             socketQueue.put(data)
+            socketQueue.task_done()
 
 
 # Set up client to read data from multiple servers possible independent threads based on sockets found
@@ -69,7 +70,8 @@ if __name__ == "__main__":
         sensorName=f"event_synced",
         extension=".json",
         dataPath=args.data,
-        backupPath=args.backup
+        backupPath=args.backup,
+        recordingTime=args.record_time
         )
     
 

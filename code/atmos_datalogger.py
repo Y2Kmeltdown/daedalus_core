@@ -114,12 +114,7 @@ def atmosInit(t_sample:int = 1, p_sample:int = 1, h_sample:int = 1, mode:str = "
 
     return ctrl_meas_WORD, ctrl_hum_WORD, config_WORD, measurement_T
 
-def readAtmos(i2c_address, atmosDataHandler, record_time, ctrl_meas_WORD, ctrl_hum_WORD, config_WORD, measurement_T):
-
-    buffer = []
-    last_save_time = datetime.now()
-    buffer_save_interval = timedelta(seconds=10)  # Save buffer every 10 seconds
-    last_buffer_save = datetime.now()
+def readAtmos(i2c_address, atmosDataHandler, ctrl_meas_WORD, ctrl_hum_WORD, config_WORD, measurement_T):
 
     print("Starting data logging...")
 
@@ -153,24 +148,7 @@ def readAtmos(i2c_address, atmosDataHandler, record_time, ctrl_meas_WORD, ctrl_h
                 humidityInt = int(humidityBinary, 2)
                 #  TODO perform compensation
 
-                buffer.append(f"{pressureInt},{temperatureInt},{humidityInt}\n".encode("utf-8"))
-                #print(buffer)
-
-            # Save buffer to files every 10 seconds
-            if datetime.now() - last_buffer_save >= buffer_save_interval and buffer:
-                print(f"[INFO] Writing buffer at {datetime.now().strftime('%H:%M:%S')}...")
-                
-                atmosDataHandler.write_data(buffer)
-
-                buffer.clear()  # Clear buffer after writing
-                last_buffer_save = datetime.now()
-
-            # Create a new file every 5 minutes
-            if (datetime.now() - last_save_time).total_seconds() >= record_time:
-                print(f"\n[INFO] Creating new file at {datetime.now().strftime('%H:%M:%S')}")
-                last_save_time = datetime.now()
-                atmosDataHandler.generate_filename()
-                atmosDataHandler.validate_savepoints()
+                atmosDataHandler.write_data(f"{pressureInt},{temperatureInt},{humidityInt}\n".encode("utf-8"))
 
     except (ValueError, IOError) as err:
         print(f"[ERROR] {err}")
@@ -213,9 +191,10 @@ if __name__ == "__main__":
         sensorName=sensorName, 
         extension = ".txt", 
         dataPath=args.data, 
+        recordingTime=args.record_time,
         backupPath=args.backup,
         socketPath=args.socket
         )
     
-    readAtmos(int(args.i2c_address, 16), atmosDataHandler, args.record_time, ctrl_meas_WORD, ctrl_hum_WORD, config_WORD, measurement_T)
+    readAtmos(int(args.i2c_address, 16), atmosDataHandler, ctrl_meas_WORD, ctrl_hum_WORD, config_WORD, measurement_T)
 

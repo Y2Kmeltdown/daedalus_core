@@ -43,7 +43,7 @@ def bmi270Init(i2c_address):
 	
     return BMI270_1
 
-def read_imu(i2c_address, imuDataHandler, record_time):
+def read_imu(i2c_address, imuDataHandler):
 
     try:
         i2c = board.I2C()  # uses board.SCL and board.SDA
@@ -60,11 +60,6 @@ def read_imu(i2c_address, imuDataHandler, record_time):
     
     print("Starting IMU Reader...")
     
-    buffer = []
-    last_save_time = datetime.now()
-    buffer_save_interval = timedelta(seconds=10)  # Save buffer every 10 seconds
-    last_buffer_save = datetime.now()
-
     try:
         while True:
 
@@ -74,30 +69,13 @@ def read_imu(i2c_address, imuDataHandler, record_time):
                 mag = icm.magnetic
                 timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 data_line = f"{timestamp}\tax:{accel}\tgy:{gyro}\tmag:{mag}\n"
-                buffer.append(data_line)
             elif bmi270:
                 accel = bmi.get_acc_data()
                 gyro = bmi.get_gyr_data()
                 timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 data_line = f"{timestamp}\tax:{accel}\tgy:{gyro}\n"
-                buffer.append(data_line)
             
-            
-            # Save buffer to files every 10 seconds
-            if datetime.now() - last_buffer_save >= buffer_save_interval and buffer:
-                print(f"[INFO] Writing buffer at {datetime.now().strftime('%H:%M:%S')}...")
-                
-                imuDataHandler.write_data(buffer)
-
-                buffer.clear()  # Clear buffer after writing
-                last_buffer_save = datetime.now()
-
-            # Every 60 seconds, generate new filenames
-            if (datetime.now() - last_save_time).total_seconds() >= record_time:
-                print(f"\n[INFO] Creating new file at {datetime.now().strftime('%H:%M:%S')}")
-                last_save_time = datetime.now()
-                imuDataHandler.generate_filename()
-                imuDataHandler.validate_savepoints()
+            imuDataHandler.write_data(data_line)
 
             time.sleep(1)  # Sleep for 1 second between readings
 
@@ -137,8 +115,10 @@ if __name__ == '__main__':
         extension = ".txt", 
         dataPath=args.data, 
         backupPath=args.backup,
-        socketPath=args.socket
+        recordingTime=args.record_time,
+        socketPath=args.socket,
+        bufferInterval=10
         )
-    read_imu(args.i2c_address, imuDataHandler, args.record_time)
+    read_imu(args.i2c_address, imuDataHandler)
 
     

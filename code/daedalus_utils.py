@@ -16,7 +16,7 @@ import pyudev
 import numpy as np
 
 class data_handler:
-    def __init__(self, sensorName:str, extension:str ,dataPath:str, backupPath:str, socketPath:str = None):
+    def __init__(self, sensorName:str, extension:str ,dataPath:str, backupPath:str, recordingTime:int ,socketPath:str = None, bufferInterval:int = 10):
         self.sensorName = sensorName
         self._sensorExtension = extension
         self.dataPath = Path(dataPath)
@@ -32,8 +32,19 @@ class data_handler:
         self._backupIsMounted = False
         self._socketIsMounted = False
         self.index = 0
+
+        self.record_time = recordingTime
+        self.last_save_time = datetime.now()
+        self.last_buffer_save = datetime.now()
+        self.buffer_save_interval = timedelta(seconds=bufferInterval)
+        self.buffer = []
+
         self.generate_savepoints()
         self.generate_filename()
+        print(f"[INFO] {sensorName} Filename Generator Thread Starting")
+        fileNameThread = threading.Thread(target=self._savepoint_thread, daemon=True)
+        fileNameThread.start()
+
 
     def validate_savepoints(self):
 
@@ -88,8 +99,23 @@ class data_handler:
         current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
         self.index += 1
         self.file_name = f"{self.sensorName}_data_{current_time}_{self.index}{self._sensorExtension}"
+
+    def _savepoint_thread(self):
+        while True:
+            if (datetime.now() - self.last_save_time).total_seconds() >= self.record_time:
+                    print(f"\n[INFO] Creating new file at {datetime.now().strftime('%H:%M:%S')}")
+                    self.last_save_time = datetime.now()
+                    self.generate_filename()
+                    self.validate_savepoints()
+            time.sleep(1)
         
-    def write_data(self, data):
+
+    def getRTC():
+        kernelTime = os.popen(f"sudo hwclock -r").read()
+        return kernelTime
+        
+    def write_data(self, data, now:bool = False):
+        #TODO move the buffer timing and saving to this method instead of in the logging scripts
 
         if isinstance(data, list):
             if isinstance(data[0], bytes):
@@ -113,27 +139,33 @@ class data_handler:
             socketPath = str(self.socketPath)
             socketWrite = threading.Thread(target=self._socketThread, kwargs={"data":data, "socketPath":socketPath}, daemon=True)
             socketWrite.start()
-            #TODO Move this join somewhere else
-            #socketWrite.join()
         else:
             if not self._dataDirExists and not self._backupDirExists:
                 raise IOError("No valid locations exist to write data")
             
-            if self._dataDirExists:
-                dataFile = self.dataPath / self.file_name
-                dataWrite = threading.Thread(target=self._writerThread, kwargs={"data":data, "path":dataFile}, daemon=True)
-                dataWrite.start()
+            self.buffer.append(data)
+            #print(self.buffer)
+            if datetime.now() - self.last_buffer_save >= self.buffer_save_interval and self.buffer or now == True:
+                print(f"[INFO] Writing buffer at {datetime.now().strftime('%H:%M:%S')}...")
 
-            if self._backupDirExists:
-                backupFile = self.backupPath / self.file_name
-                backupWrite = threading.Thread(target=self._writerThread, kwargs={"data":data, "path":backupFile}, daemon=True)
-                backupWrite.start()
+                if self._dataDirExists:
+                    dataFile = self.dataPath / self.file_name
+                    dataWrite = threading.Thread(target=self._writerThread, kwargs={"data":data, "path":dataFile}, daemon=True)
+                    dataWrite.start()
 
-            if self._dataDirExists:
-                dataWrite.join()
-            
-            if self._backupDirExists:
-                backupWrite.join()
+                if self._backupDirExists:
+                    backupFile = self.backupPath / self.file_name
+                    backupWrite = threading.Thread(target=self._writerThread, kwargs={"data":data, "path":backupFile}, daemon=True)
+                    backupWrite.start()
+
+                self.buffer.clear()  # Clear buffer after writing
+                self.last_buffer_save = datetime.now()
+
+                if self._dataDirExists:
+                    dataWrite.join()
+                
+                if self._backupDirExists:
+                    backupWrite.join()
 
     def _writerThread(self, data, path):
         try:

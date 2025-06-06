@@ -18,19 +18,21 @@ def check_event_camera(serialNumberList):
         print(f"Error during serial number check: {e}", flush=True)
         return None
     
-def record_5Mins(serial:str):
-
+def run(
+        serial, 
+        flushInterval, 
+        measurementInterval, 
+        eventDataHandler: daedalus_utils.data_handler,
+        eventMetadataHandler: daedalus_utils.data_handler,
+        eventSamplesHandler: daedalus_utils.data_handler,
+        eventMeasurementsHandler: daedalus_utils.data_handler
+        ):
     
-
-    start_recording = time.monotonic_ns()
-    end_recording = start_recording + 300_000_000_000
-    flush_interval = int(round(args.flush_interval * 1e9))
-    measurement_interval = int(round(args.measurement_interval * 1e9))
-    name = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    flush_interval = int(round(flushInterval * 1e9))
+    measurement_interval = int(round(measurementInterval * 1e9))
 
     with nd.open(raw=True, serial=serial) as device:
         print(f"Successfully started EVK4 at serial: {serial}")
-
         # Save the camera biases (metadata)
         metadata = {
             "system_time": time.time(),
@@ -38,27 +40,24 @@ def record_5Mins(serial:str):
             "configuration": "NONE",
         }
         metadata_json = json.dumps(metadata, indent=4)
-        eventMetadata.write_data(metadata_json)
+        eventMetadataHandler.write_data(metadata_json, now=True)
 
         events_cursor = 0
         start_time = time.monotonic_ns()
         next_measurement = start_time
-
         for status, packet in device:
-            eventData.write_data(packet)
+            eventDataHandler.write_data(packet)
             events_cursor += len(packet)
-
             # Prepare sample data
             try:
                 status_dict = dataclasses.asdict(status)
                 status_dict["events_cursor"] = events_cursor
                 sample_line = json.dumps(status_dict).encode() + b'\n'
 
-                eventSamples.write_data(sample_line)
+                eventSamplesHandler.write_data(sample_line)
                 
             except Exception as e:
                 print(f"Error processing sample data: {e}", file=sys.stderr)
-
             # Measurements at intervals
             if time.monotonic_ns() >= next_measurement:
                 try:
@@ -69,26 +68,85 @@ def record_5Mins(serial:str):
                     }
                     measurement_line = json.dumps(measurement_dict).encode() + b'\n'
 
-                    eventMeasurements.write_data(measurement_line)
+                    eventMeasurementsHandler.write_data(measurement_line)
                 except Exception as e:
                     print(f"Error obtaining measurements: {e}", file=sys.stderr)
 
                 next_measurement = time.monotonic_ns() + measurement_interval
+    pass
 
-            # Check if recording time is over
-            if time.monotonic_ns() >= end_recording:
-                eventData.generate_filename()
-                eventData.validate_savepoints()
+    
+# def record_5Mins(serial:str):
 
-                eventMetadata.generate_filename()
-                eventMetadata.validate_savepoints()
+    
 
-                eventSamples.generate_filename()
-                eventSamples.validate_savepoints()
+#     start_recording = time.monotonic_ns()
+#     end_recording = start_recording + 300_000_000_000
+#     flush_interval = int(round(args.flush_interval * 1e9))
+#     measurement_interval = int(round(args.measurement_interval * 1e9))
+#     name = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
-                eventMeasurements.generate_filename()
-                eventMeasurements.validate_savepoints()
-                break
+#     with nd.open(raw=True, serial=serial) as device:
+#         print(f"Successfully started EVK4 at serial: {serial}")
+
+#         # Save the camera biases (metadata)
+#         metadata = {
+#             "system_time": time.time(),
+#             "properties": dataclasses.asdict(device.properties()),
+#             "configuration": "NONE",
+#         }
+#         metadata_json = json.dumps(metadata, indent=4)
+#         eventMetadata.write_data(metadata_json)
+
+#         events_cursor = 0
+#         start_time = time.monotonic_ns()
+#         next_measurement = start_time
+
+#         for status, packet in device:
+#             eventData.write_data(packet)
+#             events_cursor += len(packet)
+
+#             # Prepare sample data
+#             try:
+#                 status_dict = dataclasses.asdict(status)
+#                 status_dict["events_cursor"] = events_cursor
+#                 sample_line = json.dumps(status_dict).encode() + b'\n'
+
+#                 eventSamples.write_data(sample_line)
+                
+#             except Exception as e:
+#                 print(f"Error processing sample data: {e}", file=sys.stderr)
+
+#             # Measurements at intervals
+#             if time.monotonic_ns() >= next_measurement:
+#                 try:
+#                     measurement_dict = {
+#                         "system_time": time.time(),
+#                         "temperature": device.temperature_celsius(),
+#                         "illuminance": device.illuminance(),
+#                     }
+#                     measurement_line = json.dumps(measurement_dict).encode() + b'\n'
+
+#                     eventMeasurements.write_data(measurement_line)
+#                 except Exception as e:
+#                     print(f"Error obtaining measurements: {e}", file=sys.stderr)
+
+#                 next_measurement = time.monotonic_ns() + measurement_interval
+
+#             # Check if recording time is over
+#             if time.monotonic_ns() >= end_recording:
+#                 eventData.generate_filename()
+#                 eventData.validate_savepoints()
+
+#                 eventMetadata.generate_filename()
+#                 eventMetadata.validate_savepoints()
+
+#                 eventSamples.generate_filename()
+#                 eventSamples.validate_savepoints()
+
+#                 eventMeasurements.generate_filename()
+#                 eventMeasurements.validate_savepoints()
+#                 break
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -111,7 +169,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--socket",
         default=str("/tmp/event.sock"),
-        help="Path of the directory where recordings are backed up",
+        help="Path of the socket where data is streamed",
     )
     parser.add_argument(
         "--measurement-interval",
@@ -125,6 +183,11 @@ if __name__ == "__main__":
         type=float,
         help="Maximum interval between file flushes in seconds",
     )
+    parser.add_argument(
+        "--record_time",
+        default=300,
+        help="Time in seconds for how long to record to a single file"
+    )
     args = parser.parse_args()
 
     configuration = nd.prophesee_evk4.Configuration(
@@ -135,33 +198,49 @@ if __name__ == "__main__":
     )
     serial = check_event_camera(args.serial)
 
-    eventData = daedalus_utils.data_handler(
+    eventDataHandler = daedalus_utils.data_handler(
         sensorName=f"evk4_{serial}",
         extension=".es",
         dataPath=args.data,
-        backupPath=args.backup
+        backupPath=args.backup,
+        recordingTime=args.record_time,
+        socketPath=args.socket
         )
     
-    eventMetadata = daedalus_utils.data_handler(
+    eventMetadataHandler = daedalus_utils.data_handler(
         sensorName=f"evk4_{serial}_metadata",
         extension=".json",
         dataPath=args.data,
-        backupPath=args.backup
+        backupPath=args.backup,
+        recordingTime=args.record_time,
+        socketPath=args.socket
         )
     
-    eventSamples = daedalus_utils.data_handler(
+    eventSamplesHandler = daedalus_utils.data_handler(
         sensorName=f"evk4_{serial}_samples",
         extension=".jsonl",
         dataPath=args.data,
-        backupPath=args.backup
+        backupPath=args.backup,
+        recordingTime=args.record_time,
+        socketPath=args.socket
         )
     
-    eventMeasurements = daedalus_utils.data_handler(
+    eventMeasurementsHandler = daedalus_utils.data_handler(
         sensorName=f"evk4_{serial}_measurements",
         extension=".jsonl",
         dataPath=args.data,
-        backupPath=args.backup
+        backupPath=args.backup,
+        recordingTime=args.record_time,
+        socketPath=args.socket
         )
 
     while True:
-        record_5Mins(serial)
+        run(
+            serial,
+            args.flush_interval,
+            args.measurement_interval,
+            eventDataHandler,
+            eventMetadataHandler,
+            eventSamplesHandler,
+            eventMeasurementsHandler
+            )
