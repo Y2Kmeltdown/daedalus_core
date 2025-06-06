@@ -20,7 +20,7 @@ def check_event_camera(serialNumberList):
     
 def run(
         serial, 
-        flushInterval, 
+        configuration,
         measurementInterval, 
         eventDataHandler: daedalus_utils.data_handler,
         eventMetadataHandler: daedalus_utils.data_handler,
@@ -28,10 +28,9 @@ def run(
         eventMeasurementsHandler: daedalus_utils.data_handler
         ):
     
-    flush_interval = int(round(flushInterval * 1e9))
     measurement_interval = int(round(measurementInterval * 1e9))
 
-    with nd.open(raw=True, serial=serial) as device:
+    with nd.open(raw=True, serial=serial, configuration=configuration) as device:
         print(f"Successfully started EVK4 at serial: {serial}")
         # Save the camera biases (metadata)
         metadata = {
@@ -164,7 +163,7 @@ if __name__ == "__main__":
     while True:
         run(
             serial,
-            args.flush_interval,
+            configuration,
             args.measurement_interval,
             eventDataHandler,
             eventMetadataHandler,

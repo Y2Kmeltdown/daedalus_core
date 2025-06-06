@@ -87,10 +87,11 @@ parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFo
 parser.add_argument(
     "--camera", 
     default=0,
-    help="Camera number (for example 0 or 1)")
+    help="Camera number (for example 0 or 1)"
+)
 parser.add_argument(
     "--port",
-    default=8080,
+    default=8081,
     type=int,
     help="Port at which server is available on"
 )
