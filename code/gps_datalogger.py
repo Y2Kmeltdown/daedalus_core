@@ -9,11 +9,12 @@ import daedalus_utils
     
 def checksumValidator(packet: bytearray) -> bool:
     checksum = 0
-    for byte in packet[1:-4]:
+    for byte in packet[1:-3]:
         checksum ^= byte
+    
 
     highNibbleAscii, lowNibbleAscii = ord(hex((checksum >> 4) & 0xf)[-1].capitalize()).to_bytes(1, 'big'), ord(hex((checksum) & 0xf)[-1].capitalize()).to_bytes(1, 'big')
-    highInput, lowInput = packet[-3], packet[-2]
+    highInput, lowInput = packet[-2], packet[-1]
 
     return highNibbleAscii == highInput.to_bytes(1, 'big') and lowNibbleAscii == lowInput.to_bytes(1, 'big')
 
@@ -55,38 +56,41 @@ def packetRepairer(packet: bytearray, repairLimit: int = 1) -> tuple[bytes, bool
 
     return packet, False, False
 
-def run(serialPort, gpsDataHandler, record_time):
-    port = serial.Serial(serialPort, baudrate=38400, timeout=1)
+def run(gpsTransciever:daedalus_utils.transceiver , gpsDataHandler:daedalus_utils.data_handler, record_time:int):
+    #port = serial.Serial(serialPort, baudrate=38400, timeout=1)
 
     
     buffer = []
     last_save_time = datetime.now()
     buffer_save_interval = timedelta(seconds=10)  # Save buffer every 10 seconds
     last_buffer_save = datetime.now()
+    EOM = False
 
     print("Starting data logging...")
 
     try:
         while True:
-            gps_data = port.read(65535)
-            nmeaPackets = gps_data.split(b"\n")
+            gps_data = gpsTransciever.receive()
 
-            for packet in nmeaPackets:
-                if packet != b"":
-                    packet, status, repair = packetRepairer(packet)
-
-                    if status:
-                        packet_data = packet + b'\n'
-                        buffer.append(packet_data)
-
-            # Save buffer to files every 10 seconds
-            if datetime.now() - last_buffer_save >= buffer_save_interval and buffer:
-                print(f"[INFO] Writing buffer at {datetime.now().strftime('%H:%M:%S')}...")
+            if gps_data is not None:
+                if gps_data[0:6] == b'$GNGLL':
+                    EOM = True
+                #print(gps_data)
                 
+                packet, status, repair = packetRepairer(gps_data)
+                if status:
+                    
+                    packet_data = packet + b'\r\n'
+                    
+                    buffer.append(bytes(packet_data))
+
+            if EOM and buffer:
+                print(f"[INFO] Writing buffer at {datetime.now().strftime('%H:%M:%S')}...")
                 gpsDataHandler.write_data(buffer)
 
                 buffer.clear()  # Clear buffer after writing
                 last_buffer_save = datetime.now()
+                EOM = False
 
             # Create a new file every 5 minutes
             if (datetime.now() - last_save_time).total_seconds() >= record_time:
@@ -94,15 +98,17 @@ def run(serialPort, gpsDataHandler, record_time):
                 last_save_time = datetime.now()
                 gpsDataHandler.generate_filename()
                 gpsDataHandler.validate_savepoints()
+    except (KeyboardInterrupt, SystemExit):
+        print("Stopping GPS Reader.")
 
-    except (ValueError, IOError) as err:
-        print(f"[ERROR] {err}")
-    finally:
-        port.close()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("port", help="Serial Port for GPS", type=str)
+    parser.add_argument(
+        "--port",
+        default="/dev/ttyACM0",
+        help="Serial Port for GPS", 
+        type=str)
     parser.add_argument(
         "--data",
         default="/usr/local/daedalus/data",
@@ -132,9 +138,11 @@ if __name__ == '__main__':
         backupPath=args.backup,
         socketPath=args.socket
         )
+    
+    gpsTransciever = daedalus_utils.transceiver(args.port, 38400)
 
     try:
-        run(args.port, gpsDataHandler, args.record_time)
+        run(gpsTransciever, gpsDataHandler, args.record_time)
     except (KeyboardInterrupt, SystemExit):
         print("\nEnding gps_reader.py")
         sys.exit(0)
