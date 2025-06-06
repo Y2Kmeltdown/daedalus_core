@@ -34,7 +34,11 @@ def generateDataString(gpsObject:daedalus_utils.supervisor.supervisorModule, eve
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("port", help="Serial Port for GPS", type=str)
+    parser.add_argument(
+        "--port",
+        default="/dev/ttyUSB0",
+        help="Serial Port for GPS", 
+        type=str)
     args = parser.parse_args()
 
     #port = "COM8"

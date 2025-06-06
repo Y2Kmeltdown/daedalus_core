@@ -77,7 +77,7 @@ def read_imu(i2c_address, imuDataHandler):
             
             imuDataHandler.write_data(data_line)
 
-            time.sleep(1)  # Sleep for 1 second between readings
+            time.sleep(0.5)  # Sleep for 1 second between readings
 
     except (KeyboardInterrupt, SystemExit):
         print("Stopping IMU Reader.")

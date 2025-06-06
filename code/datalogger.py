@@ -25,10 +25,11 @@ def socketServer(socketFile:str, socketQueue:queue.Queue):
         server.listen(1)
         conn, addr = server.accept()
         data = conn.recv(1024)
-        print(data)
+        #print(data)
         if data is not None:
             socketQueue.put(data)
             socketQueue.task_done()
+            print(socketQueue.qsize())
 
 
 # Set up client to read data from multiple servers possible independent threads based on sockets found
@@ -63,7 +64,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    supervisorFile = "../config/supervisord.conf"
+    supervisorFile = "config/supervisord.conf"
     eventide = daedalus_utils.supervisor(supervisorFile)
 
     eventideDataHandler = daedalus_utils.data_handler(
