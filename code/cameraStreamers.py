@@ -1,25 +1,19 @@
 import argparse
 import io
-import cv2
-import asyncio
-import numpy as np
-import threading
 from threading import Condition
-import queue
+from multiprocessing import Process, Pipe
 import logging
 import os
 import time
 
+import cv2
+import numpy as np
 from aiohttp import web, MultipartWriter
 import neuromorphic_drivers as nd
-
-from multiprocessing import Process, Pipe
 
 from picamera2 import Picamera2
 from picamera2.encoders import JpegEncoder
 from picamera2.outputs import FileOutput
-
-from PIL import Image
 
 logging.basicConfig()
 log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
