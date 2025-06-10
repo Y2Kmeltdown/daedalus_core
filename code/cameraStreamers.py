@@ -19,6 +19,8 @@ from picamera2 import Picamera2
 from picamera2.encoders import JpegEncoder
 from picamera2.outputs import FileOutput
 
+from PIL import Image
+
 logging.basicConfig()
 log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
 logger = logging.getLogger("server")
@@ -63,7 +65,7 @@ class StreamHandler:
                     break
             await response.write(b"\r\n")
 
-class eventCamera:
+class cameraManager:
     def __init__(self, idx, p_output, width, height, camScale:int = 1):
         self._idx = idx
         
@@ -77,33 +79,24 @@ class eventCamera:
         return self._idx
 
     async def get_frame(self):
-        self.frame = self.framepipe.recv()
+        eventFrame = self.framepipe.recv()
         if self.scale != 1:
-            self.frame = cv2.resize(self.frame, dsize=(self.width//self.scale, self.height//self.scale), interpolation=cv2.INTER_CUBIC)
-        frameout = cv2.imencode('.jpg', np.flip(self.frame, 0))[1]
-        await asyncio.sleep(1 / 25)
-        return frameout.tobytes()
-    
-    def stop(self):
-        '''
-        dummy method
-        '''
-        pass
+            eventFrame = cv2.resize(eventFrame, dsize=(self.width//self.scale, self.height//self.scale), interpolation=cv2.INTER_CUBIC)
 
-class piCamera:
-    def __init__(self, idx):
-        self._idx = idx
-
-    @property
-    def identifier(self):
-        return self._idx
-
-    async def get_frame(self):
         with output.condition:
             output.condition.wait()
-            frameout = output.frame
-        #await asyncio.sleep(1 / 25)
-        return frameout
+            convBytes = output.frame
+            convFrame = cv2.imdecode(np.frombuffer(convBytes,np.uint8), cv2.IMREAD_COLOR)
+            convFrame = cv2.resize(convFrame, dsize=(self.width//self.scale, self.height//self.scale), interpolation=cv2.INTER_CUBIC)
+        
+        flippedEventFrame = np.flip(eventFrame, 0)
+        rgbEventFrame = np.stack((flippedEventFrame,)*3, axis=-1)
+        
+        mergedFrame = np.concatenate((rgbEventFrame, convFrame), 0)
+
+        outputFrame = cv2.imencode('.jpg', mergedFrame)[1]
+
+        return outputFrame.tobytes()
     
     def stop(self):
         '''
@@ -111,23 +104,19 @@ class piCamera:
         '''
         pass
 
-class irCamera():
-    pass
+
 
 class MjpegServer:
 
-    def __init__(self, eventcam:eventCamera, picam:piCamera, ircam:irCamera, host='0.0.0.0', port=8080):
+    def __init__(self, cameras:cameraManager, host='0.0.0.0', port=8080):
         self._port = port
         self._host = host
         self._app = web.Application()
         self._cam_routes = []
-        self._eventcam = eventcam
-        self._picam = picam
-        self._ircam = ircam
+        self._viewfinder = cameras
 
     def start(self):
-        self._app.router.add_route("GET", "/eventcam", StreamHandler(self._eventcam))
-        self._app.router.add_route("GET", "/picam", StreamHandler(self._picam))
+        self._app.router.add_route("GET", "/", StreamHandler(self._viewfinder))
         web.run_app(self._app, host=self._host, port=self._port)
 
     def stop(self):
@@ -217,10 +206,8 @@ if __name__ == "__main__":
     eventProcess = Process(target=eventProducer, args=(event_input, ), daemon=True)   
     frameProcess = Process(target=eventAccumulator, args=(event_output, frame_input,(cam_width, cam_height) ), daemon=True) 
     
-    eventcam = eventCamera(0, frame_output, height=cam_height, width=cam_width, camScale=1)
-    picam = piCamera(1)
-    ircam = irCamera()
-    server = MjpegServer(eventcam=eventcam, picam=picam, ircam=ircam, port=args.port)
+    cameras = cameraManager(0, frame_output, height=cam_height, width=cam_width, camScale=1)
+    server = MjpegServer(cameras=cameras, port=args.port)
 
     try:
         eventProcess.start()
@@ -232,6 +219,5 @@ if __name__ == "__main__":
         eventProcess.join()
         frameProcess.join()
         server.stop()
-        eventcam.stop()
-        picam.stop()
+        cameras.stop()
         picam2.stop_recording()
