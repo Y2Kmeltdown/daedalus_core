@@ -77,7 +77,8 @@ def run(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument(
-        "serial", 
+        "--serial", 
+        default="00051501",
         help="Camera serial number list must contain at least one serial number (for example 00050423 00051505 00051503)",
         nargs="+",
         type=str

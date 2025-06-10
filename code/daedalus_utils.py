@@ -132,10 +132,10 @@ class data_handler:
             raise TypeError("Data must be string or bytes")
         
         if self._socketDirExists:
-            try:
-                socketWrite.join()
-            except:
-                pass
+            # try:
+            #     socketWrite.join()
+            # except:
+            #     pass
             socketPath = str(self.socketPath)
             socketWrite = threading.Thread(target=self._socketThread, kwargs={"data":data, "socketPath":socketPath}, daemon=True)
             socketWrite.start()
@@ -182,8 +182,8 @@ class data_handler:
             with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
                 s.connect(socketPath)
                 s.sendall(data)
-        except Exception:
-            print(f"[WARNING] Failed to write to socket: {socketPath}")
+        except Exception as e:
+            print(f"[WARNING] Failed to write to socket: {socketPath}\n {e}")
             self.validate_savepoints()
 
     def monitor_usb_drives(self) -> List[Dict[str, str]]:

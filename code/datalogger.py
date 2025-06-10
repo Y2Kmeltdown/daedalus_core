@@ -1,5 +1,5 @@
 import socket
-from threading import Thread
+from threading import Thread, Lock
 import daedalus_utils
 import argparse
 import time
@@ -15,21 +15,39 @@ from threading import Thread
 
 
 
-def socketServer(socketFile:str, socketQueue:queue.Queue):
-    if os.path.exists(socketFile):
-        os.remove(socketFile)  
+class socketServer(Thread):
+    def __init__(self, name:str, socketFile:any, socketQueue:queue.Queue):
+        super().__init__(daemon=True)
 
-    server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    server.bind(socketFile)
-    while True:
-        server.listen(1)
-        conn, addr = server.accept()
-        data = conn.recv(1024)
-        #print(data)
-        if data is not None:
-            socketQueue.put(data)
-            socketQueue.task_done()
-            print(socketQueue.qsize())
+        self.name = name
+
+        if type(socketFile) is pathlib.Path:
+            self.socketFile = socketFile
+        elif type(socketFile) is str:
+            self.socketFile = pathlib.Path(socketFile)
+        elif type(socketFile) is bytes:
+            self.socketFile = pathlib.Path(str(socketFile))
+        else:
+            raise Exception("socketFile must be a Path, String or Bytes object")
+
+        self.socketQueue = socketQueue
+        
+
+    def run(self):
+        if os.path.exists(str(self.socketFile)):
+            os.remove(str(self.socketFile))
+
+        server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        server.bind(str(self.socketFile))
+        while True:
+            server.listen(1)
+            conn, addr = server.accept()
+            data = conn.recv(2048)
+    
+            if data is not None:
+                self.socketQueue.put(data)
+                self.socketQueue.task_done()
+
 
 
 # Set up client to read data from multiple servers possible independent threads based on sockets found
@@ -75,27 +93,29 @@ if __name__ == "__main__":
         recordingTime=args.record_time
         )
     
-
+    data_lock = Lock()
     # Socket Handler
-    socketList = []
-    for supervisorObject in eventide.moduleDict.values():
+    socketDict = {}
+    for key, supervisorObject in eventide.moduleDict.items():
         sock = supervisorObject.sock
         if sock is not None:
-            socketList.append(sock)
+            socketQueue = queue.Queue()
+            socketFile = str(sock)
+            socketThread = socketServer(key, socketFile=socketFile, socketQueue=socketQueue)
+            socketThread.start()
+            socketDict[key] = (socketFile, socketQueue, socketThread)
 
-    print(socketList)
+    print(socketDict)
 
-    socketThreads = []
-    socketQueues = []
-    for sock in socketList:
-        socketQueue = queue.Queue()
-        socketFile = str(sock)
-        socketThread = Thread(target=socketServer, kwargs={"socketFile":socketFile, "socketQueue":socketQueue}, daemon=True)
-        socketThread.start()
-        socketThreads.append(socketThread)
-        socketQueues.append(socketQueue)
+    # Handle special cases E.G. pi camera, GPS
+    # Handle unix timestamping
+    # Handle JSON or dictionary placement
 
     while(True):
         pass
+        data = socketDict["event_based_camera"][1].get()
+        print(socketDict["event_based_camera"][1].qsize())
+        #socketDict["event_based_camera"][1].task_done()
+        time.sleep(0.1)
     
 
