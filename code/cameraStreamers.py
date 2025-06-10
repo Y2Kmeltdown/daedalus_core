@@ -74,13 +74,13 @@ class cameraManager:
 
     async def get_frame(self):
         eventFrame = self.framepipe.recv()
-        if self.scale != 1:
-            eventFrame = cv2.resize(eventFrame, dsize=(self.width//self.scale, self.height//self.scale), interpolation=cv2.INTER_CUBIC)
-
         with output.condition:
             output.condition.wait()
             convBytes = output.frame
             convFrame = cv2.imdecode(np.frombuffer(convBytes,np.uint8), cv2.IMREAD_COLOR)
+            
+        if self.scale != 1:
+            eventFrame = cv2.resize(eventFrame, dsize=(self.width//self.scale, self.height//self.scale), interpolation=cv2.INTER_CUBIC)
             convFrame = cv2.resize(convFrame, dsize=(self.width//self.scale, self.height//self.scale), interpolation=cv2.INTER_CUBIC)
         
         flippedEventFrame = np.flip(eventFrame, 0)
@@ -170,10 +170,16 @@ if __name__ == "__main__":
     parser.add_argument(
         "--serial", 
         default="00051501",
-        help="Camera serial number (for example 00050423)"
+        help="Event camera serial number (for example 00050423)"
     )
     parser.add_argument(
-        "--camera", 
+        "--scale", 
+        default="0.5",
+        type=float,
+        help="Webpage viewfinder scale"
+    )
+    parser.add_argument(
+        "--picam", 
         default=0,
         help="Camera number (for example 0 or 1)"
     )
@@ -185,7 +191,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    picam2 = Picamera2(int(args.camera))
+    picam2 = Picamera2(int(args.picam))
     picam2.configure(picam2.create_video_configuration(main={"size": (1280, 960)}))
     output = StreamingOutput()
     picam2.start_recording(JpegEncoder(), FileOutput(output))
@@ -200,7 +206,7 @@ if __name__ == "__main__":
     eventProcess = Process(target=eventProducer, args=(event_input, ), daemon=True)   
     frameProcess = Process(target=eventAccumulator, args=(event_output, frame_input,(cam_width, cam_height) ), daemon=True) 
     
-    cameras = cameraManager(0, frame_output, height=cam_height, width=cam_width, camScale=1)
+    cameras = cameraManager(0, frame_output, height=cam_height, width=cam_width, camScale=int(1/args.scale))
     server = MjpegServer(cameras=cameras, port=args.port)
 
     try:
