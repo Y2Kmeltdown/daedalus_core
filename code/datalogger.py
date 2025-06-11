@@ -13,6 +13,7 @@ import os
 import socket, time
 from threading import Thread
 
+eventList = []
 
 
 class socketServer(Thread):
@@ -42,7 +43,7 @@ class socketServer(Thread):
         while True:
             server.listen(1)
             conn, addr = server.accept()
-            data = conn.recv(2048)
+            data = conn.recv(20000)
     
             if data is not None:
                 self.socketQueue.put(data)
@@ -93,7 +94,6 @@ if __name__ == "__main__":
         recordingTime=args.record_time
         )
     
-    data_lock = Lock()
     # Socket Handler
     socketDict = {}
     for key, supervisorObject in eventide.moduleDict.items():
@@ -111,11 +111,12 @@ if __name__ == "__main__":
     # Handle unix timestamping
     # Handle JSON or dictionary placement
 
+    
+
     while(True):
         pass
-        data = socketDict["event_based_camera"][1].get()
-        print(socketDict["event_based_camera"][1].qsize())
-        #socketDict["event_based_camera"][1].task_done()
-        time.sleep(0.1)
+
+            
+            
     
 

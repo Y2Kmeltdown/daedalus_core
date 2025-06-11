@@ -7,6 +7,7 @@ import queue
 import re
 import os
 import socket
+import sys
 
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -22,9 +23,13 @@ class data_handler:
         self.dataPath = Path(dataPath)
         self.backupPath = Path(backupPath)
         if socketPath:
+            self.socketQueue = queue.Queue()
             self.socketPath = Path(socketPath)
+            self.socketWrite = threading.Thread(target=self._socketThread, kwargs={"socketQueue":self.socketQueue, "socketPath":str(self.socketPath)}, daemon=True)
+            self.socketWrite.start()
         else:
             self.socketPath = None
+            self.socketQueue = None
         self._dataDirExists = False
         self._backupDirExists = False
         self._socketDirExists = False
@@ -132,13 +137,7 @@ class data_handler:
             raise TypeError("Data must be string or bytes")
         
         if self._socketDirExists:
-            # try:
-            #     socketWrite.join()
-            # except:
-            #     pass
-            socketPath = str(self.socketPath)
-            socketWrite = threading.Thread(target=self._socketThread, kwargs={"data":data, "socketPath":socketPath}, daemon=True)
-            socketWrite.start()
+            self.socketQueue.put(data)
         else:
             if not self._dataDirExists and not self._backupDirExists:
                 raise IOError("No valid locations exist to write data")
@@ -177,14 +176,18 @@ class data_handler:
             print(f"[WARNING] Failed to write to file: {path}")
             self.validate_savepoints()
 
-    def _socketThread(self, data, socketPath):
-        try:
-            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
-                s.connect(socketPath)
-                s.sendall(data)
-        except Exception as e:
-            print(f"[WARNING] Failed to write to socket: {socketPath}\n {e}")
-            self.validate_savepoints()
+    def _socketThread(self, socketQueue:queue.Queue, socketPath):
+        while True:
+            data = socketQueue.get()
+            try:
+                with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+                    s.connect(socketPath)
+                    s.sendall(data)
+                    #print(sys.getsizeof(data))
+            except Exception as e:
+                print(f"[WARNING] Failed to write to socket: {socketPath}\n {e}")
+                print(socketQueue.qsize())
+                self.validate_savepoints()
 
     def monitor_usb_drives(self) -> List[Dict[str, str]]:
         """

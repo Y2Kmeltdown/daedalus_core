@@ -161,11 +161,12 @@ if __name__ == "__main__":
         socketPath=args.socket
         )
 
+    measurement_interval = int(round(args.measurement_interval * 1e9))
     while True:
         run(
             serial,
             configuration,
-            args.measurement_interval,
+            measurement_interval,
             eventDataHandler,
             eventMetadataHandler,
             eventSamplesHandler,
