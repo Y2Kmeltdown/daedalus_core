@@ -3,6 +3,7 @@ import datetime
 import json
 import argparse
 from pathlib import Path
+import sys
 
 from picamera2 import Picamera2
 from libcamera import controls
@@ -62,8 +63,9 @@ def cameraHandler(camID, piCamDataHandler:daedalus_utils.data_handler, config):
                 if not chunk:
                     break  # End of data
                 bytesList.append(chunk)
-
+                
             piCamDataHandler.write_data(bytesList, now=True)
+            
 
             
         except Exception as e:
@@ -90,7 +92,7 @@ if __name__ == "__main__":
         )
     parser.add_argument(
         "--timer",
-        default=10,
+        default=5,
         type=int,
         help="Time in seconds between snapshots"
     )

@@ -108,7 +108,8 @@ class data_handler:
     def _savepoint_thread(self):
         while True:
             if (datetime.now() - self.last_save_time).total_seconds() >= self.record_time:
-                    print(f"\n[INFO] Creating new file at {datetime.now().strftime('%H:%M:%S')}")
+                    if not self._socketDirExists:
+                        print(f"\n[INFO] Creating new file at {datetime.now().strftime('%H:%M:%S')}")
                     self.last_save_time = datetime.now()
                     self.generate_filename()
                     self.validate_savepoints()
@@ -177,17 +178,18 @@ class data_handler:
             self.validate_savepoints()
 
     def _socketThread(self, socketQueue:queue.Queue, socketPath):
-        while True:
-            data = socketQueue.get()
-            try:
-                with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
-                    s.connect(socketPath)
+        try:
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+                s.connect(socketPath)
+                while True:
+                    data = socketQueue.get()
                     s.sendall(data)
-                    #print(sys.getsizeof(data))
-            except Exception as e:
-                print(f"[WARNING] Failed to write to socket: {socketPath}\n {e}")
-                print(socketQueue.qsize())
-                self.validate_savepoints()
+                    EOTString = f"EOT{chr(3)}{chr(4)}".encode("utf-8")
+                    s.send(EOTString)
+        except Exception as e:
+            print(f"[WARNING] Failed to write to socket: {socketPath}\n {e}")
+            print(socketQueue.qsize())
+            self.validate_savepoints()
 
     def monitor_usb_drives(self) -> List[Dict[str, str]]:
         """
