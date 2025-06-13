@@ -13,6 +13,7 @@ import base64
 
 import daedalus_utils
 import neuromorphic_drivers as nd
+import numpy
 
 
 class eventCamera(Thread):
@@ -30,7 +31,7 @@ class eventCamera(Thread):
     
     def run(self):
         with nd.open(raw=self.raw, serial=self.serial, configuration=self.configuration) as device:
-            print(f"INFO: Successfully started EVK4 at serial: {self.serial}")
+            print(f"[INFO] Successfully started EVK4 at serial: {self.serial}")
             # Save the camera biases (metadata)
             metadata = {
                 "system_time": time.time(),
@@ -42,8 +43,14 @@ class eventCamera(Thread):
             start_time = time.monotonic_ns()
             next_measurement = start_time
             for status, packet in device:
+                #print(packet.keys())
+                if self.raw == False:
+                    events = packet["dvs_events"].tolist()
+                else:
+                    events = base64.b64encode(packet).decode("utf-8")
+
                 with data_lock:
-                    self.eventList.append(packet)
+                    self.eventList.append(events)
                 events_cursor += len(packet)
                 # Prepare sample data
                 try:
@@ -51,7 +58,7 @@ class eventCamera(Thread):
                     status_dict["events_cursor"] = events_cursor
                     sample_line = json.dumps(status_dict).encode() + b'\n'
                     with data_lock:
-                        self.sampleList.append(sample_line)
+                        self.sampleList.append(sample_line.decode("utf-8"))
                     
                 except Exception as e:
                     print(f"Error processing sample data: {e}", file=sys.stderr)
@@ -65,7 +72,7 @@ class eventCamera(Thread):
                         }
                         measurement_line = json.dumps(measurement_dict).encode() + b'\n'
                         with data_lock:
-                            self.measurementList.append(measurement_line)
+                            self.measurementList.append(measurement_line.decode("utf-8"))
                     except Exception as e:
                         print(f"Error obtaining measurements: {e}", file=sys.stderr)
 
@@ -84,7 +91,12 @@ class eventCamera(Thread):
             self.eventList = []
             self.measurementList = []
             self.sampleList = []
-        return events, measurements, samples
+            eventData = {
+                "events": events,
+                "measurements": measurements,
+                "samples": samples
+            }
+        return eventData
     
 
 class socketServer(Thread):
@@ -118,26 +130,34 @@ class socketServer(Thread):
             os.remove(str(self.socketFile))
 
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
-        
+            
             s.bind(str(self.socketFile))
             s.listen(1)
-            conn, addr = s.accept()
-            socketBuffer = []
             while True:
-                data = conn.recv(self.bufsize)
-                if data[-5:] == b"EOT\x03\x04":
-                    print("INFO: EOT Detected")
-                    socketOut = b"".join(socketBuffer)
-                    socketBuffer = []
-                    if self.buffer:
-                        with data_lock:
-                            self.dataList.append(socketOut)
-                    else:
-                        self.socketQueue.put(socketOut)
-                        self.socketQueue.task_done()
-                elif data is not b"":
-                    socketBuffer.append(data)
-                    #print(data[-5:])
+                conn, addr = s.accept()
+                print(f"[INFO] {self.name} socket connected.")
+                socketBuffer = []
+                while True:
+                    data = conn.recv(self.bufsize)
+                    
+                    if data[-5:] == b"EOT\x03\x04":
+                        socketBuffer.append(data[:-5])
+                        #print("[INFO] EOT Detected")
+                        
+                        socketOut = b"".join(socketBuffer)
+                        socketBuffer = []
+                        if self.buffer:
+                            with data_lock:
+                                self.dataList.append(socketOut)
+                        else:
+                            self.socketQueue.put(socketOut)
+                            self.socketQueue.task_done()
+                    elif data is not b"":
+                        socketBuffer.append(data)
+                        #print(data[-5:])
+                    elif data is b"":
+                        print(f"[WARNING] {self.name} socket disconnected. Attempting to reconnect.")
+                        break
                     
                     
 
@@ -176,7 +196,7 @@ if __name__ == "__main__":
     
     parser.add_argument(
         "--data",
-        default="/usr/local/daedalus/data",
+        default="/home/eventide/daedalus_core/data",
         help="Path of the directory where recordings are stored",
     )
     parser.add_argument(
@@ -209,7 +229,7 @@ if __name__ == "__main__":
     eventide = daedalus_utils.supervisor(supervisorFile)
     eventideDataHandler = daedalus_utils.data_handler(
         sensorName=f"event_synced",
-        extension=".json",
+        extension=".jsonl",
         dataPath=args.data,
         backupPath=args.backup,
         recordingTime=args.record_time
@@ -230,6 +250,9 @@ if __name__ == "__main__":
             elif key == "pi_picture_camera":
                 buffer = False
                 bufsize = 32768
+            elif key == "infra_red_camera":
+                buffer = False
+                bufsize = 32768
             else:
                 buffer = True
                 bufsize = 4096
@@ -237,7 +260,7 @@ if __name__ == "__main__":
             socketThread.start()
             socketDict[key] = (socketFile, socketQueue, socketThread)
 
-    print(socketDict)
+    #print(socketDict)
 
     # INITIALISE EVENT CAMERAS
 
@@ -259,46 +282,73 @@ if __name__ == "__main__":
         eventCameraDict = {}
         metadataList = []
         for serial in evkSerialList:
-            camera = eventCamera(serial, configuration, False, measurementInterval=args.measurement_interval)
+            raw = True
+            camera = eventCamera(serial=serial, configuration=configuration, raw=raw, measurementInterval=args.measurement_interval)
             camera.start()
             camMetadata = camera.getMetadata()
             eventCameraDict[serial] = camera
             metadataList.append(camMetadata)
+            metadataList.append({"raw":raw})
     else:
-        print("INFO: No Event Cameras connected to system.")
-
-    # SET UP RECORDING INTERVALS
-
+        print("[INFO] No Event Cameras connected to system.")
 
     # RUN CODE
 
     testSerial = "00051501"
     eventideList = []
+    GPS_data = ""
     while True:
-        pass
         try:
             piPicData = socketDict["pi_picture_camera"][1].get_nowait()
-            base64Image = base64.b64encode(piPicData)
+            base64PiImage = base64.b64encode(piPicData).decode("utf-8")
+            print("[INFO] Pi Picture added to json data")
         except queue.Empty:
-            print("INFO: No Pictures")
-            base64Image = ""
-    
+            #print("[INFO] No Pictures Available")
+            base64PiImage = ""
+
+        try:
+            irCamData = socketDict["infra_red_camera"][1].get_nowait()
+            base64IrImage = base64.b64encode(irCamData).decode("utf-8")
+            print("[INFO] IR Picture added to json data")
+        except queue.Empty:
+            #print("[INFO] No Pictures Available")
+            base64IrImage = ""
+
+        event_Data = eventCameraDict[testSerial].getEventBuffer()
+        IMU_Data = socketDict["i_m_u"][2].getDataBuffer()
+        if IMU_Data:
+            IMU_Data = [data.decode("utf-8") for data in IMU_Data]
+        Atmos_Data = socketDict["atmos_temp_sensor"][2].getDataBuffer()
+        #print(Atmos_Data)
+        if Atmos_Data:
+            Atmos_Data = [data.decode("utf-8") for data in Atmos_Data]
+        IR_Data = base64IrImage
+        PiCam_Data = base64PiImage
+
+
+        
+
         eventideChunk = {
             "Timestamp":time.time(),
-            "GPS_data": "",
-            "Event_data": eventCameraDict[testSerial].getEventBuffer(),
-            "Picam_data": base64Image,
-            "IMU": socketDict["i_m_u"][2].getDataBuffer(),
-            "Atmos": socketDict["atmos_temp_sensor"][2].getDataBuffer(),
-            "IR_data": socketDict["infra_red_camera"][2].getDataBuffer(),
+            "GPS_data": GPS_data,
+            "Event_data": event_Data,
+            "Picam_data": PiCam_Data,
+            "IMU": IMU_Data,
+            "Atmos": Atmos_Data,
+            "IR_data": IR_Data,
             "Metadata": metadataList
         }
+
+        #print(eventideChunk)
+        eventideString = json.dumps(eventideChunk).encode() + b'\n'
+        eventideDataHandler.write_data(eventideString)
+
         try:
-            eventideChunk["GPS_data"] = socketDict["g_p_s"][1].get(block=True, timeout=5)
+            GPS_data = socketDict["g_p_s"][1].get(block=True, timeout=5).decode("utf-8")
         except queue.Empty:
-            print("INFO: No GPS packets available")
+            GPS_data = ""
+            print("[INFO] No GPS packets available")
         
-        eventideList.append(eventideChunk)
         
         
         

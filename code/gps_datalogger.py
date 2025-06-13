@@ -1,11 +1,6 @@
-import serial
 import argparse
-from datetime import datetime, timedelta
-import os
-from pathlib import Path
 import sys
 import daedalus_utils
-
     
 def checksumValidator(packet: bytearray) -> bool:
     checksum = 0
@@ -118,10 +113,11 @@ if __name__ == '__main__':
         socketPath=args.socket
         )
     
+    
     gpsTransciever = daedalus_utils.transceiver(args.port, 38400)
 
     try:
         run(gpsTransciever, gpsDataHandler)
     except (KeyboardInterrupt, SystemExit):
-        print("\nEnding gps_reader.py")
+        print("\nEnding gps_datalogger.py")
         sys.exit(0)

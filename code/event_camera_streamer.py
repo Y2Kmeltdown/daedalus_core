@@ -2,8 +2,6 @@ import argparse
 import cv2
 import asyncio
 import numpy as np
-import threading
-import queue
 import logging
 import os
 import time

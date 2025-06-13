@@ -1,20 +1,13 @@
-#!/usr/bin/env python
-#-----------------------------------------------------------------------------
-# imu_reader.py
-#
-# Script to read data over I2C from two ICM20948 boards using the Adafruit ICM libraries
-#
-#==================================================================================
-
 import time
-from datetime import datetime, timedelta
-import os
+from datetime import datetime
 import argparse
-from pathlib import Path
 import board
+import sys
+
 from bmi270.BMI270 import *
 import adafruit_icm20x
 import daedalus_utils
+
 
 
 #ADDRESS_1 = 0x69
@@ -119,6 +112,12 @@ if __name__ == '__main__':
         socketPath=args.socket,
         bufferInterval=10
         )
-    read_imu(args.i2c_address, imuDataHandler)
+    
+    try:
+        read_imu(args.i2c_address, imuDataHandler)
+    except (KeyboardInterrupt, SystemExit):
+        print("\nEnding imu_datalogger.py")
+        sys.exit(0)
+    
 
     

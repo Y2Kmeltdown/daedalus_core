@@ -20,35 +20,42 @@ class data_handler:
     def __init__(self, sensorName:str, extension:str ,dataPath:str, backupPath:str, recordingTime:int ,socketPath:str = None, bufferInterval:int = 10):
         self.sensorName = sensorName
         self._sensorExtension = extension
-        self.dataPath = Path(dataPath)
-        self.backupPath = Path(backupPath)
-        if socketPath:
-            self.socketQueue = queue.Queue()
-            self.socketPath = Path(socketPath)
-            self.socketWrite = threading.Thread(target=self._socketThread, kwargs={"socketQueue":self.socketQueue, "socketPath":str(self.socketPath)}, daemon=True)
-            self.socketWrite.start()
-        else:
-            self.socketPath = None
-            self.socketQueue = None
+
         self._dataDirExists = False
         self._backupDirExists = False
         self._socketDirExists = False
         self._dataIsMounted = False
         self._backupIsMounted = False
         self._socketIsMounted = False
+
         self.index = 0
 
-        self.record_time = recordingTime
+        self.dataPath = Path(dataPath)
+        self.backupPath = Path(backupPath)
+        if socketPath:
+            self.socketPath = Path(socketPath)
+            self.socketQueue = queue.Queue()
+            self.socketWrite = threading.Thread(target=self._socketThread, kwargs={"socketQueue":self.socketQueue, "socketPath":str(self.socketPath)}, daemon=True)
+            self.socketThreadActive = True
+            self.socketWrite.start()
+        else:
+            self.socketPath = None
+        
+
+        
         self.last_save_time = datetime.now()
         self.last_buffer_save = datetime.now()
         self.buffer_save_interval = timedelta(seconds=bufferInterval)
         self.buffer = []
-
         self.generate_savepoints()
         self.generate_filename()
-        print(f"[INFO] {sensorName} Filename Generator Thread Starting")
-        fileNameThread = threading.Thread(target=self._savepoint_thread, daemon=True)
-        fileNameThread.start()
+        self.record_time = recordingTime
+        if self.record_time > 0:
+            print(f"[INFO] {sensorName} Filename Generator Thread Starting")
+            fileNameThread = threading.Thread(target=self._savepoint_thread, daemon=True)
+            fileNameThread.start()
+        
+        
 
 
     def validate_savepoints(self):
@@ -73,21 +80,22 @@ class data_handler:
                 pathExists = False
 
             if ".sock" in str(directory):
+                
                 try:
                     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
-                        s.connect(str(directory))
+                        s.connect(str(directory)) 
+                    print("[INFO] Socket connection established. Writing data to socket.")
                     pathExists = True
                 except:
                     pathExists = False
    
             return isMounted, pathExists
         
-        
-        
         self._dataIsMounted, self._dataDirExists = validate_directory(self.dataPath)
         self._backupIsMounted, self._backupDirExists = validate_directory(self.backupPath)
         if self.socketPath:
             self._socketIsMounted, self._socketDirExists = validate_directory(self.socketPath)
+            
             
     def generate_savepoints(self):
 
@@ -99,8 +107,10 @@ class data_handler:
         generate_directory(self.dataPath, self._dataIsMounted, self._dataDirExists)
         generate_directory(self.backupPath, self._backupIsMounted, self._backupDirExists)
         self.validate_savepoints()
+        
 
     def generate_filename(self):
+        print(f"\n[INFO] Creating new file at {datetime.now().strftime('%H:%M:%S')}")
         current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
         self.index += 1
         self.file_name = f"{self.sensorName}_data_{current_time}_{self.index}{self._sensorExtension}"
@@ -109,10 +119,9 @@ class data_handler:
         while True:
             if (datetime.now() - self.last_save_time).total_seconds() >= self.record_time:
                     if not self._socketDirExists:
-                        print(f"\n[INFO] Creating new file at {datetime.now().strftime('%H:%M:%S')}")
-                    self.last_save_time = datetime.now()
-                    self.generate_filename()
-                    self.validate_savepoints()
+                        self.last_save_time = datetime.now()
+                        self.generate_filename()
+                        self.validate_savepoints()
             time.sleep(1)
         
 
@@ -121,7 +130,6 @@ class data_handler:
         return kernelTime
         
     def write_data(self, data, now:bool = False):
-        #TODO move the buffer timing and saving to this method instead of in the logging scripts
 
         if isinstance(data, list):
             if isinstance(data[0], bytes):
@@ -146,6 +154,8 @@ class data_handler:
             self.buffer.append(data)
             #print(self.buffer)
             if datetime.now() - self.last_buffer_save >= self.buffer_save_interval and self.buffer or now == True:
+                if now:
+                    self.generate_filename()
                 print(f"[INFO] Writing buffer at {datetime.now().strftime('%H:%M:%S')}...")
 
                 if self._dataDirExists:
@@ -178,18 +188,21 @@ class data_handler:
             self.validate_savepoints()
 
     def _socketThread(self, socketQueue:queue.Queue, socketPath):
-        try:
-            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
-                s.connect(socketPath)
-                while True:
-                    data = socketQueue.get()
-                    s.sendall(data)
-                    EOTString = f"EOT{chr(3)}{chr(4)}".encode("utf-8")
-                    s.send(EOTString)
-        except Exception as e:
-            print(f"[WARNING] Failed to write to socket: {socketPath}\n {e}")
-            print(socketQueue.qsize())
-            self.validate_savepoints()
+        while True:
+            if self._socketDirExists:
+                try:
+                    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+                        s.connect(socketPath)
+                        while True:
+                            data = socketQueue.get()
+                            s.sendall(data)
+                            EOTString = f"EOT{chr(3)}{chr(4)}".encode("utf-8")
+                            s.send(EOTString)   
+                except Exception as e:
+                    print(f"[WARNING] Failed to write to socket: {socketPath}\n {e}")
+                    self.socketThreadActive = False
+                    self.validate_savepoints()
+            time.sleep(1)
 
     def monitor_usb_drives(self) -> List[Dict[str, str]]:
         """
@@ -496,7 +509,7 @@ class transceiver:
             self._receiveQueue.task_done()
             return data
         except queue.Empty:
-            return None
+            return bytearray()
 
     def transmit(self, data):
         # Add type checking and encoding handling

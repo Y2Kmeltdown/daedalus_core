@@ -2,15 +2,11 @@ import time
 import datetime
 import json
 import argparse
-from pathlib import Path
 import sys
+import io
 
 from picamera2 import Picamera2
 from libcamera import controls
-from PIL import Image
-import io
-
-import os
 
 import daedalus_utils
 
@@ -65,13 +61,14 @@ def cameraHandler(camID, piCamDataHandler:daedalus_utils.data_handler, config):
                 bytesList.append(chunk)
                 
             piCamDataHandler.write_data(bytesList, now=True)
+
             
 
             
         except Exception as e:
             print(f"Error during snapshot capture: {e}", flush=True)
 
-        time.sleep(piCamDataHandler.record_time)
+        time.sleep(args.timer)
 
 if __name__ == "__main__":
 
@@ -82,7 +79,7 @@ if __name__ == "__main__":
         help="Camera number (for example 0 or 1)")
     parser.add_argument(
         "--data",
-        default="/home/eventide/daedalus_core/data",
+        default="/usr/local/daedalus/data/pi_picture",
         help="Path of the directory where recordings are stored",
         )
     parser.add_argument(
@@ -122,13 +119,18 @@ if __name__ == "__main__":
         extension=".png",
         dataPath=args.data,
         backupPath=args.backup,
-        recordingTime=args.timer,
+        recordingTime=0,
         socketPath=args.socket
     )
 
-    cameraHandler(
-        int(args.camera),
-        piCamDataHandler,
-        args.config
-    )
+    try:
+        cameraHandler(
+            int(args.camera),
+            piCamDataHandler,
+            args.config
+        )
+
+    except (KeyboardInterrupt, SystemExit):
+        print("\nEnding pi_camera_picture_datalogger.py")
+        sys.exit(0)
 

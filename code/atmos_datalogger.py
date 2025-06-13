@@ -1,7 +1,6 @@
 from smbus2 import SMBus
 import argparse
-import os
-from datetime import datetime, timedelta
+import sys
 import time
 
 import daedalus_utils
@@ -129,7 +128,7 @@ def readAtmos(i2c_address, atmosDataHandler, ctrl_meas_WORD, ctrl_hum_WORD, conf
         while(True):
             status_data = i2cbus.read_byte_data(i2c_address,r_dict["status_REG"])
             #print(bin(status_data))
-            time.sleep(measurement_T)
+            time.sleep(measurement_T*20)
             if status_data == 0:
                 pressure = i2cbus.read_i2c_block_data(i2c_address, r_dict["press_msb_REG"], 3)
                 pressureBinary = "".join([format(val, '#010b')[2:] for val in pressure])[0:-4]
@@ -148,7 +147,8 @@ def readAtmos(i2c_address, atmosDataHandler, ctrl_meas_WORD, ctrl_hum_WORD, conf
                 humidityInt = int(humidityBinary, 2)
                 #  TODO perform compensation
 
-                atmosDataHandler.write_data(f"{pressureInt},{temperatureInt},{humidityInt}\n".encode("utf-8"))
+
+                atmosDataHandler.write_data(f"{pressureInt},{temperatureInt},{humidityInt}".encode("utf-8"))
 
     except (ValueError, IOError) as err:
         print(f"[ERROR] {err}")
@@ -196,5 +196,9 @@ if __name__ == "__main__":
         socketPath=args.socket
         )
     
-    readAtmos(int(args.i2c_address, 16), atmosDataHandler, ctrl_meas_WORD, ctrl_hum_WORD, config_WORD, measurement_T)
+    try:
+        readAtmos(int(args.i2c_address, 16), atmosDataHandler, ctrl_meas_WORD, ctrl_hum_WORD, config_WORD, measurement_T)
+    except (KeyboardInterrupt, SystemExit):
+        print("\nEnding atmos_datalogger.py")
+        sys.exit(0)
 
