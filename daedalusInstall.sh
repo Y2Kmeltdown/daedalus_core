@@ -31,8 +31,8 @@ sudo mkdir /mnt/data
 sudo echo "/dev/sda1  /mnt/data  auto  noatime,rw,nofail,noauto,sync,x-systemd.automount" >> /etc/fstab
 
 sudo mkdir -p /usr/local/daedalus
-sudo cp -a Code /usr/local/daedalus/code
-sudo cp -a Config /usr/local/daedalus/config
+sudo cp -a code /usr/local/daedalus/code
+sudo cp -a config /usr/local/daedalus/config
 
 sudo sed -i "s@/usr/local/daedalus/data@$DAEDALUS_DIR@g" /usr/local/daedalus/config/supervisord.conf
 
