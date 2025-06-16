@@ -31,7 +31,7 @@ class eventCamera(Thread):
     
     def run(self):
         with nd.open(raw=self.raw, serial=self.serial, configuration=self.configuration) as device:
-            print(f"[INFO] Successfully started EVK4 at serial: {self.serial}")
+            print(f"[INFO] Successfully started EVK4 at serial: {self.serial}", flush=True)
             # Save the camera biases (metadata)
             metadata = {
                 "system_time": time.time(),
@@ -135,7 +135,7 @@ class socketServer(Thread):
             s.listen(1)
             while True:
                 conn, addr = s.accept()
-                print(f"[INFO] {self.name} socket connected.")
+                print(f"[INFO] {self.name} socket connected.", flush=True)
                 socketBuffer = []
                 while True:
                     data = conn.recv(self.bufsize)
@@ -290,7 +290,7 @@ if __name__ == "__main__":
             metadataList.append(camMetadata)
             metadataList.append({"raw":raw})
     else:
-        print("[INFO] No Event Cameras connected to system.")
+        print("[INFO] No Event Cameras connected to system.", flush=True)
 
     # RUN CODE
 
@@ -301,7 +301,7 @@ if __name__ == "__main__":
         try:
             piPicData = socketDict["pi_picture_camera"][1].get_nowait()
             base64PiImage = base64.b64encode(piPicData).decode("utf-8")
-            print("[INFO] Pi Picture added to json data")
+            print("[INFO] Pi Picture added to json data", flush=True)
         except queue.Empty:
             #print("[INFO] No Pictures Available")
             base64PiImage = ""
@@ -309,7 +309,7 @@ if __name__ == "__main__":
         try:
             irCamData = socketDict["infra_red_camera"][1].get_nowait()
             base64IrImage = base64.b64encode(irCamData).decode("utf-8")
-            print("[INFO] IR Picture added to json data")
+            print("[INFO] IR Picture added to json data", flush=True)
         except queue.Empty:
             #print("[INFO] No Pictures Available")
             base64IrImage = ""
@@ -348,7 +348,7 @@ if __name__ == "__main__":
             GPS_data = socketDict["g_p_s"][1].get(block=True, timeout=5).decode("utf-8")
         except queue.Empty:
             GPS_data = ""
-            print("[INFO] No GPS packets available")
+            print("[INFO] No GPS packets available", flush=True)
         
         
         

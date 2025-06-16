@@ -51,7 +51,7 @@ class data_handler:
         self.generate_filename()
         self.record_time = recordingTime
         if self.record_time > 0:
-            print(f"[INFO] {sensorName} Filename Generator Thread Starting")
+            print(f"[INFO] {sensorName} Filename Generator Thread Starting", flush=True)
             fileNameThread = threading.Thread(target=self._savepoint_thread, daemon=True)
             fileNameThread.start()
         
@@ -84,7 +84,7 @@ class data_handler:
                 try:
                     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
                         s.connect(str(directory)) 
-                    print("[INFO] Socket connection established. Writing data to socket.")
+                    print("[INFO] Socket connection established. Writing data to socket.", flush=True)
                     pathExists = True
                 except:
                     pathExists = False
@@ -110,7 +110,7 @@ class data_handler:
         
 
     def generate_filename(self):
-        print(f"\n[INFO] Creating new file at {datetime.now().strftime('%H:%M:%S')}")
+        print(f"\n[INFO] Creating new file at {datetime.now().strftime('%H:%M:%S')}", flush=True)
         current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
         self.index += 1
         self.file_name = f"{self.sensorName}_data_{current_time}_{self.index}{self._sensorExtension}"
@@ -157,7 +157,7 @@ class data_handler:
             if datetime.now() - self.last_buffer_save >= self.buffer_save_interval and self.buffer or now == True:
                 if now:
                     self.generate_filename()
-                print(f"[INFO] Writing buffer at {datetime.now().strftime('%H:%M:%S')}...")
+                print(f"[INFO] Writing buffer at {datetime.now().strftime('%H:%M:%S')}...", flush=True)
                 writeData = b"".join(self.buffer)
 
                 if self._dataDirExists:
@@ -239,7 +239,7 @@ class data_handler:
             print(f"Error monitoring USB drives: {str(e)}")
             return []
 
-    def get_mount_point(device_node: str) -> Dict[str, str]:
+    def get_mount_point(self, device_node: str) -> Dict[str, str]:
         """
         Get comprehensive mounting information for a device.
         

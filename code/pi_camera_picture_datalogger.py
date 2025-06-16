@@ -32,7 +32,7 @@ def cameraHandler(camID, piCamDataHandler:daedalus_utils.data_handler, config):
     config = picam.create_still_configuration()
     picam.configure(config)
 
-    print(f"[INFO] {piCamDataHandler.sensorName} Starting snapshots")
+    print(f"[INFO] {piCamDataHandler.sensorName} Starting snapshots", flush=True)
     picam.start()
     time.sleep(1)
     #cameraControls(picam, config)
