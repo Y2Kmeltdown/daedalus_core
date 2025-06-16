@@ -7,7 +7,6 @@ def checksumValidator(packet: bytearray) -> bool:
     for byte in packet[1:-3]:
         checksum ^= byte
     
-
     highNibbleAscii, lowNibbleAscii = ord(hex((checksum >> 4) & 0xf)[-1].capitalize()).to_bytes(1, 'big'), ord(hex((checksum) & 0xf)[-1].capitalize()).to_bytes(1, 'big')
     highInput, lowInput = packet[-2], packet[-1]
 
@@ -62,7 +61,7 @@ def run(gpsTransciever:daedalus_utils.transceiver , gpsDataHandler:daedalus_util
         while True:
             gps_data = gpsTransciever.receive()
 
-            if gps_data is not None:
+            if gps_data:
                 packet, status, repair = packetRepairer(gps_data)
                 if status:
                     packet_data = packet + b'\r\n'

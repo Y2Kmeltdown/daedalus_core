@@ -324,17 +324,18 @@ if __name__ == "__main__":
             Atmos_Data = [data.decode("utf-8") for data in Atmos_Data]
         IR_Data = base64IrImage
         PiCam_Data = base64PiImage
-
-
-        
+        Telem_Data = socketDict["cube_red_telemetry"][2].getDataBuffer()
+        if Telem_Data:
+            Telem_Data = [data.decode("utf-8") for data in Telem_Data]
 
         eventideChunk = {
             "Timestamp":time.time(),
             "GPS_data": GPS_data,
+            "IMU": IMU_Data,
+            "Telem_Data": Telem_Data,
+            "Atmos": Atmos_Data,
             "Event_data": event_Data,
             "Picam_data": PiCam_Data,
-            "IMU": IMU_Data,
-            "Atmos": Atmos_Data,
             "IR_data": IR_Data,
             "Metadata": metadataList
         }

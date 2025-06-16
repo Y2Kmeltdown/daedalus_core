@@ -25,7 +25,7 @@ if __name__ == "__main__":
         type=str)
     parser.add_argument(
         "--data",
-        default="/home/eventide/daedalus_core/data",
+        default="/usr/local/daedalus/data",
         help="Path of the directory where recordings are stored",
         type=str
         )
