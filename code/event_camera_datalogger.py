@@ -225,7 +225,7 @@ if __name__ == "__main__":
 
 
     # INITIAL SUPERVISOR ACCESS AND DATA HANDLER
-    supervisorFile = "config/supervisord.conf"
+    supervisorFile = "../config/supervisord.conf"
     eventide = daedalus_utils.supervisor(supervisorFile)
     eventideDataHandler = daedalus_utils.data_handler(
         sensorName=f"event_synced",
