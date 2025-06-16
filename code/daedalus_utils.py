@@ -153,19 +153,21 @@ class data_handler:
             
             self.buffer.append(data)
             #print(self.buffer)
+            #print(self.buffer)
             if datetime.now() - self.last_buffer_save >= self.buffer_save_interval and self.buffer or now == True:
                 if now:
                     self.generate_filename()
                 print(f"[INFO] Writing buffer at {datetime.now().strftime('%H:%M:%S')}...")
+                writeData = b"".join(self.buffer)
 
                 if self._dataDirExists:
                     dataFile = self.dataPath / self.file_name
-                    dataWrite = threading.Thread(target=self._writerThread, kwargs={"data":data, "path":dataFile}, daemon=True)
+                    dataWrite = threading.Thread(target=self._writerThread, kwargs={"data":writeData, "path":dataFile}, daemon=True)
                     dataWrite.start()
 
                 if self._backupDirExists:
                     backupFile = self.backupPath / self.file_name
-                    backupWrite = threading.Thread(target=self._writerThread, kwargs={"data":data, "path":backupFile}, daemon=True)
+                    backupWrite = threading.Thread(target=self._writerThread, kwargs={"data":writeData, "path":backupFile}, daemon=True)
                     backupWrite.start()
 
                 self.buffer.clear()  # Clear buffer after writing
@@ -183,8 +185,8 @@ class data_handler:
                 f.write(data)
                 f.flush()
 
-        except Exception:
-            print(f"[WARNING] Failed to write to file: {path}")
+        except Exception as e:
+            print(f"[WARNING] Failed to write to file: {path}\n {e}")
             self.validate_savepoints()
 
     def _socketThread(self, socketQueue:queue.Queue, socketPath):

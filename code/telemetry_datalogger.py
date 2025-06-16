@@ -13,13 +13,7 @@ def run(port:str, baud:int, datahandler:daedalus_utils.data_handler):
     while True:
         msg = master.recv_match(blocking=True)
         if msg:
-            print(msg.get_type())
-            if msg.get_type() == 'GLOBAL_POSITION_INT':
-                print(f"  Latitude: {msg.lat / 1e7}")
-                print(f"  Longitude: {msg.lon / 1e7}")
-                print(f"  Altitude: {msg.alt / 1000}")
-
-            datahandler.write_data(msg)
+            datahandler.write_data(str(msg)+"\n")
 
 if __name__ == "__main__":
 
@@ -27,11 +21,11 @@ if __name__ == "__main__":
     parser.add_argument(
         "--port",
         default="/dev/ttyUSB0",
-        help="Serial Port for GPS", 
+        help="Serial Port for Cube Red", 
         type=str)
     parser.add_argument(
         "--data",
-        default="/usr/local/daedalus/data",
+        default="/home/eventide/daedalus_core/data",
         help="Path of the directory where recordings are stored",
         type=str
         )
