@@ -152,10 +152,10 @@ class socketServer(Thread):
                         else:
                             self.socketQueue.put(socketOut)
                             self.socketQueue.task_done()
-                    elif data is not b"":
+                    elif data != b"":
                         socketBuffer.append(data)
                         #print(data[-5:])
-                    elif data is b"":
+                    elif data == b"":
                         print(f"[WARNING] {self.name} socket disconnected. Attempting to reconnect.")
                         break
                     
