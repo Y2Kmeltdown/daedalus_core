@@ -47,6 +47,32 @@ pip install --break-system-packages -r /usr/local/daedalus/config/requirements.t
 sudo cp /usr/local/daedalus/config/65-neuromorphic-drivers.rules /etc/udev/rules.d/65-neuromorphic-drivers.rules
 sudo cp /usr/local/daedalus/config/99-camera.rules /etc/udev/rules.d/99-camera.rules
 
+## IR Camera Installation
+sudo apt install -y \
+    libgstreamer1.0-dev \
+    libgstreamer-plugins-base1.0-dev \
+    libaravis-dev \
+    libglib2.0-dev \
+    libxml2-dev \
+    zlib1g-dev \
+    libusb-1.0-0-dev \
+    python3-dev \
+    ninja-build \
+    meson \
+    cmake
+
+# sudo git clone https://github.com/AravisProject/aravis.git
+
+# cd aravis 
+# sudo meson setup build
+# cd build 
+# sudo ninja
+# sudo ninja install
+# cd ../..
+cd aravis-python-binding
+pip install --break-system-packages -e .
+cd ../
+
 ## WATCHDOG INSTALLATION
 wget https://github.com/joan2937/lg/archive/master.zip
 unzip master.zip
