@@ -20,7 +20,7 @@ sudo mkdir /mnt/data
 sudo echo "/dev/sda1  /mnt/data  auto  noatime,rw,nofail,noauto,sync,x-systemd.automount" >> /etc/fstab
 
 sudo mkdir -p /usr/local/daedalus
-sudo cp -a Config /usr/local/daedalus/config
+sudo cp -a config /usr/local/daedalus/config
 
 ## REPOSITORY FETCH
 sudo apt-get update
