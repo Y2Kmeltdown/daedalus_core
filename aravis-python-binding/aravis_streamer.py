@@ -125,17 +125,20 @@ def frameLocker(irFrameQueue:queue.LifoQueue, frameOut:queue.LifoQueue, frameRat
 def irFrameGen(irFrameQueue:queue.LifoQueue, dims):
     
     try:
+        i = 0
         for buf in aravis.ir_buffer_streamer():
+            i += 1
+            #if i%2 == 0:
             timeStart = time.monotonic_ns()
             # This will run forever, or until you break
-            
+                
             img = Image.frombytes('L', (dims[0], dims[1]), bytes(buf))
             #print(type(img))
             if irFrameQueue.full():
                 #print("Queue Cleared")
                 irFrameQueue.queue.clear()
-            
-            
+                
+                
             irFrameQueue.put(img)
             timeEnd = time.monotonic_ns()
             #print(timeEnd-timeStart)

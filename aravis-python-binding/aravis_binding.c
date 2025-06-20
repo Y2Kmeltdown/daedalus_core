@@ -3,7 +3,7 @@
 #include <aravis-0.8/arv.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <pthread.h>
+#include <time.h>
 
 static guint64 frame_count    = 0;
 
@@ -228,9 +228,11 @@ typedef struct {
     PyObject_HEAD
     // Add your data fields here
     int current_value;
-    int max_value;
+    int iterations;
     int step;
     int is_infinite;
+    double frame_period;
+    double frame_period_ns;
     // Add any other state you need
     ArvCamera *camera;
     ArvStream *stream;
@@ -264,12 +266,16 @@ static PyObject *ir_buffer_stream_iternext(PyObject *self) {
     PyObject *result = NULL;
     
     // Check if we should stop iterating (for finite generators)
-    if (!gen->is_infinite && gen->current_value >= gen->max_value) {
+    if (!gen->is_infinite && gen->current_value >= gen->iterations) {
         return NULL;  // StopIteration
     }
 
     if (error == NULL) {
         ArvBuffer *buffer;
+        // Pop and push a buffer to drop the data imediately and essentially switch to 30FPS
+        buffer = arv_stream_pop_buffer (gen->stream);
+        arv_stream_push_buffer(gen->stream, buffer);
+
         buffer = arv_stream_pop_buffer (gen->stream);
         if (ARV_IS_BUFFER (buffer)) {
             if (arv_buffer_get_status(buffer) != ARV_BUFFER_STATUS_SUCCESS) {
@@ -332,7 +338,14 @@ static PyObject *ir_buffer_stream_iternext(PyObject *self) {
             arv_stream_push_buffer (gen->stream, buffer);
         }
     }
+    // Sleep for required framerate
+    //struct timespec ts;
+    //ts.tv_sec = (time_t)(gen->frame_period_ns / 1e9);
+    //ts.tv_nsec = (long)(gen->frame_period_ns) % 1000000000L;
+    //nanosleep(&ts, NULL);
+    //printf("Expected C Sleep Time:%lf\n", gen->frame_period_ns);
     // Update state for next iteration
+    
     gen->current_value += gen->step;
     
     return result;
@@ -363,15 +376,16 @@ static int ir_buffer_streamType_init(void) {
 static PyObject* ir_buffer_streamer(PyObject* self, PyObject* args, PyObject* kwargs) {
     int start = 0;
     int step = 1;
-    int max_val = -1;  // -1 indicates infinite (no max provided)
-    static char *kwlist[] = {"start", "step", "max", NULL};
+    int record_time = -1;  // -1 indicates infinite (no max provided)
+    int frame_rate = 30;
+    static char *kwlist[] = {"record_time", "framerate", NULL};
 
     // Aravis Camera Parameters
     GError *error = NULL;
     
     
     
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|iii", kwlist, &start, &step, &max_val))
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|ii", kwlist, &record_time, &frame_rate))
         return NULL;
 
 
@@ -395,7 +409,7 @@ static PyObject* ir_buffer_streamer(PyObject* self, PyObject* args, PyObject* kw
             size_t payload;
             payload = arv_camera_get_payload (gen->camera, &error);
             if (error == NULL) {
-                for (i = 0; i < 20; i++)
+                for (i = 0; i < 100; i++)
                     arv_stream_push_buffer (gen->stream, arv_buffer_new (payload, NULL));
             }
             if (error == NULL)
@@ -405,16 +419,24 @@ static PyObject* ir_buffer_streamer(PyObject* self, PyObject* args, PyObject* kw
     // Initialize the generator state
     gen->current_value = start;
     gen->step = step;
+    if (frame_rate <= 0) {
+        printf("Frequency must be positive!\n");
+        return;
+    }
+    
+    // Sleep for desired framerate
+    gen->frame_period = 1 / (double)frame_rate;
+    gen->frame_period_ns = gen->frame_period*1e9;
     
     
     // Determine if finite or infinite based on max_val
-    if (max_val == -1) {
+    if (record_time == -1) {
         // Infinite generator
-        gen->max_value = 0;  // Not used for infinite
+        gen->iterations = 0;  // Not used for infinite
         gen->is_infinite = 1;
     } else {
         // Finite generator
-        gen->max_value = max_val;
+        gen->iterations = record_time/gen->frame_period;
         gen->is_infinite = 0;
     }
     

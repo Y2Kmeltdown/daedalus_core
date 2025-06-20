@@ -1,3 +1,4 @@
+from posix import times
 import aravis
 import cv2
 import numpy as np
@@ -26,14 +27,23 @@ try:
     #     img = img.save(f"data/test{i}.jpg")
 
     i = 0
-    for buf in aravis.ir_buffer_streamer():
-        timeStart = time.monotonic_ns()
-        img = Image.frombytes('L', (width, height), bytes(buf))
-        img.save(f"data/test{i}.jpg")
-        print(len(buf))
+    timeStart = time.monotonic_ns()
+    for buf in aravis.ir_buffer_streamer(framerate = 30):
+        
+        
+        #img.save(f"data/test{i}.jpg")
+        #print(len(buf))
         i += 1
+        #if i%2 == 0:
+
+        #time.sleep(1/15)
+    
+        img = Image.frombytes('L', (width, height), bytes(buf))
         timeEnd = time.monotonic_ns()
-        time.sleep(2)
+        print(f"Python_Time:{timeEnd-timeStart}")
+
+        timeStart = time.monotonic_ns()
+        #time.sleep(2)
         #print(timeEnd-timeStart)
         # if i == 30:
         #     break
