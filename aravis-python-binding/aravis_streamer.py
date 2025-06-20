@@ -1,7 +1,9 @@
 import argparse
 import io
+import queue
 from threading import Condition
 from multiprocessing import Process, Pipe
+from threading import Thread
 import logging
 import os
 import time
@@ -37,6 +39,7 @@ class StreamHandler:
         await response.prepare(request)
         while True:
             frame = await self._cam.get_frame()
+            #time.sleep(1/30)
             with MultipartWriter('image/jpeg', boundary=my_boundary) as mpwriter:
                 mpwriter.append(frame, {
                     'Content-Type': 'image/jpeg'
@@ -49,25 +52,30 @@ class StreamHandler:
             await response.write(b"\r\n")
 
 class cameraManager:
-    def __init__(self, idx, p_output, width, height, camScale:int = 1):
+    def __init__(self, idx, frameQueue:queue.LifoQueue, width, height, camScale:int = 1):
         self._idx = idx
         
         self.scale = camScale
         self.width = width
         self.height = height
-        self.framepipe = p_output
+        self.frameQueue = frameQueue
 
     @property
     def identifier(self):
         return self._idx
 
     async def get_frame(self):
-        irFrame = np.asarray(self.framepipe.recv())
+        
+        
+        frame = self.frameQueue.get()
+
+        irFrame = np.asarray(frame)
          
         if self.scale != 1:
             irFrame = cv2.resize(irFrame, dsize=(self.width//self.scale, self.height//self.scale), interpolation=cv2.INTER_CUBIC)
         
         outputFrame = cv2.imencode('.jpg', irFrame)[1]
+        
 
         return outputFrame.tobytes()
     
@@ -99,16 +107,39 @@ class MjpegServer:
         '''
         pass
 
+def frameLocker(irFrameQueue:queue.LifoQueue, frameOut:queue.LifoQueue, frameRate:int):
+    try:
+        while True:
+            try:
+                irFrame = irFrameQueue.get_nowait()
+                frameOut.put(irFrame)
+            except:
+                pass
+            time.sleep(1/frameRate)
+            if frameOut.full():
+                #print("Queue Cleared")
+                frameOut.queue.clear()
+    except KeyboardInterrupt:
+        logger.warning("Keyboard Interrupt, exiting...")
 
-def irFrameGen(frame_in, dims):
+def irFrameGen(irFrameQueue:queue.LifoQueue, dims):
     
     try:
-        for buf in aravis.camera_buffer_stream():
+        for buf in aravis.ir_buffer_streamer():
+            timeStart = time.monotonic_ns()
             # This will run forever, or until you break
             
             img = Image.frombytes('L', (dims[0], dims[1]), bytes(buf))
-            frame_in.send(img)
-            time.sleep(1/10)
+            #print(type(img))
+            if irFrameQueue.full():
+                #print("Queue Cleared")
+                irFrameQueue.queue.clear()
+            
+            
+            irFrameQueue.put(img)
+            timeEnd = time.monotonic_ns()
+            #print(timeEnd-timeStart)
+            
     except KeyboardInterrupt:
         logger.warning("Keyboard Interrupt, exiting...")
         
@@ -131,23 +162,28 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    
+    frameRate = 30
     cam_width = 640
     cam_height = 480
             
-    frame_output, frame_input = Pipe()
+    irFrameQueue = queue.LifoQueue(maxsize=4096)
 
-    irProcess = Process(target=irFrameGen, args=(frame_input,(cam_width, cam_height) ), daemon=True) 
+    frameOut = queue.LifoQueue(maxsize=60)
+
+    irProcess = Thread(target=irFrameGen, args=(irFrameQueue,(cam_width, cam_height) ), daemon=True) 
+    frameThread = Thread(target=frameLocker, args=(irFrameQueue, frameOut, frameRate), daemon=True)
     
-    cameras = cameraManager(0, frame_output, height=cam_height, width=cam_width, camScale=int(1/args.scale))
+    cameras = cameraManager(0, frameOut, height=cam_height, width=cam_width, camScale=int(1/args.scale))
     server = MjpegServer(cameras=cameras, port=args.port)
 
     try:
         irProcess.start()
+        frameThread.start()
         server.start()
     except KeyboardInterrupt:
         logger.warning("Keyboard Interrupt, exiting...")
     finally:
         irProcess.join()
+        frameThread.join()
         server.stop()
         cameras.stop()

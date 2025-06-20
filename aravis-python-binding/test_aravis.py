@@ -6,30 +6,38 @@ import io
 from PIL import Image
 width = 640
 height = 480
+from multiprocessing import Process, Pipe
+from queue import LifoQueue
 
 import time
+frame_output, frame_input = Pipe()
+frameQueue = LifoQueue(maxsize=60)
 
 try:
     # buffer = aravis.get_camera_buffer()
-    # start = time.monotonic_ns()
-    # buffers = aravis.get_camera_buffers(10)
-    # end = time.monotonic_ns()
-    # print(f"Time Taken: {end-start}")
-    # print(type(buffers))
-    # print(len(buffers))
-    # print(len(buffers[0]))
+    #print(buffer)
+    #img = Image.frombytes('L', (width, height), bytes(buffer))
+    #img = img.save(f"data/test.jpg")
+    
+    # buffers = aravis.get_camera_buffers(60)
     # for i, buffer in enumerate(buffers):
+    #     print(len(buffer))
     #     img = Image.frombytes('L', (width, height), bytes(buffer))
-    #     img = img.save(f"test{i}.jpg")
+    #     img = img.save(f"data/test{i}.jpg")
+
     i = 0
-    for buf in aravis.camera_buffer_stream():
-        # This will run forever, or until you break
-        i += 1
+    for buf in aravis.ir_buffer_streamer():
+        timeStart = time.monotonic_ns()
         img = Image.frombytes('L', (width, height), bytes(buf))
-        img = img.save(f"data/test{i}.jpg")
-        time.sleep(1/10)
-        
-        if i == 30:
-            break  # You control when to stop!
+        img.save(f"data/test{i}.jpg")
+        print(len(buf))
+        i += 1
+        timeEnd = time.monotonic_ns()
+        time.sleep(2)
+        #print(timeEnd-timeStart)
+        # if i == 30:
+        #     break
+
+    
 except Exception as e:
     print(f"Error: {e}") 
