@@ -126,7 +126,8 @@ sleep 10
 nmcli con delete DAEDALUS_ETH
 nmcli con add type ethernet ifname eth0 con-name DAEDALUS_ETH
 nmcli con modify DAEDALUS_ETH ipv4.method manual ipv4.address 169.254.100.1/16
-nmcli con modify DAEDALUS_ETH ipv4.gateway 169.254.100.1/16
+nmcli con modify DAEDALUS_ETH ipv4.gateway 0.0.0.0
+nmcli con modify DAEDALUS_ETH ipv4.route-metric 601
 nmcli con modify DAEDALUS_ETH ipv6.method disabled
 nmcli con modify DAEDALUS_ETH connection.autoconnect yes
 nmcli con up DAEDALUS_ETH
