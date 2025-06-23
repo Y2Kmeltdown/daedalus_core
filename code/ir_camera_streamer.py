@@ -116,13 +116,12 @@ def irFrameGen(irFrameQueue:queue.LifoQueue, dims):
                 
             if buf:
                 img = Image.frombytes('L', (dims[0], dims[1]), bytes(buf))
-            #print(type(img))
-            if irFrameQueue.full():
-                #print("Queue Cleared")
-                irFrameQueue.queue.clear()
+                #print(type(img))
+                if irFrameQueue.full():
+                    #print("Queue Cleared")
+                    irFrameQueue.queue.clear()
                 
-                
-            irFrameQueue.put(img)
+                irFrameQueue.put(img)
             timeEnd = time.monotonic_ns()
             #print(timeEnd-timeStart)
             
