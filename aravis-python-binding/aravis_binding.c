@@ -231,8 +231,6 @@ typedef struct {
     int iterations;
     int step;
     int is_infinite;
-    double frame_period;
-    double frame_period_ns;
     // Add any other state you need
     ArvCamera *camera;
     ArvStream *stream;
@@ -272,9 +270,10 @@ static PyObject *ir_buffer_stream_iternext(PyObject *self) {
 
     if (error == NULL) {
         ArvBuffer *buffer;
+
         // Pop and push a buffer to drop the data imediately and essentially switch to 30FPS
-        buffer = arv_stream_pop_buffer (gen->stream);
-        arv_stream_push_buffer(gen->stream, buffer);
+        //buffer = arv_stream_pop_buffer (gen->stream);
+        //arv_stream_push_buffer(gen->stream, buffer);
 
         buffer = arv_stream_pop_buffer (gen->stream);
         if (ARV_IS_BUFFER (buffer)) {
@@ -338,13 +337,6 @@ static PyObject *ir_buffer_stream_iternext(PyObject *self) {
             arv_stream_push_buffer (gen->stream, buffer);
         }
     }
-    // Sleep for required framerate
-    //struct timespec ts;
-    //ts.tv_sec = (time_t)(gen->frame_period_ns / 1e9);
-    //ts.tv_nsec = (long)(gen->frame_period_ns) % 1000000000L;
-    //nanosleep(&ts, NULL);
-    //printf("Expected C Sleep Time:%lf\n", gen->frame_period_ns);
-    // Update state for next iteration
     
     gen->current_value += gen->step;
     
@@ -377,18 +369,10 @@ static PyObject* ir_buffer_streamer(PyObject* self, PyObject* args, PyObject* kw
     int start = 0;
     int step = 1;
     int record_time = -1;  // -1 indicates infinite (no max provided)
-    int frame_rate = 30;
-    static char *kwlist[] = {"record_time", "framerate", NULL};
-
+    
     // Aravis Camera Parameters
     GError *error = NULL;
     
-    
-    
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|ii", kwlist, &record_time, &frame_rate))
-        return NULL;
-
-
     // Create the generator object
     ir_buffer_stream *gen = PyObject_New(ir_buffer_stream, &ir_buffer_streamType);
     if (!gen) {
@@ -419,26 +403,10 @@ static PyObject* ir_buffer_streamer(PyObject* self, PyObject* args, PyObject* kw
     // Initialize the generator state
     gen->current_value = start;
     gen->step = step;
-    if (frame_rate <= 0) {
-        printf("Frequency must be positive!\n");
-        return;
-    }
     
-    // Sleep for desired framerate
-    gen->frame_period = 1 / (double)frame_rate;
-    gen->frame_period_ns = gen->frame_period*1e9;
+    gen->iterations = 0;  // Not used for infinite
+    gen->is_infinite = 1;
     
-    
-    // Determine if finite or infinite based on max_val
-    if (record_time == -1) {
-        // Infinite generator
-        gen->iterations = 0;  // Not used for infinite
-        gen->is_infinite = 1;
-    } else {
-        // Finite generator
-        gen->iterations = record_time/gen->frame_period;
-        gen->is_infinite = 0;
-    }
     
     return (PyObject *)gen;
 }
