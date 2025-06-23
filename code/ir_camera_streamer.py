@@ -1,123 +1,168 @@
-#!/usr/bin/env python3
-
-import os
-import io
-import time
-import logging
-import socketserver
-from http import server
-from threading import Condition, Thread
 import argparse
-import glob
-import subprocess
+import io
+import queue
+from threading import Condition
+from multiprocessing import Process, Pipe
+from threading import Thread
+import logging
+import os
+import time
+
+import cv2
+import numpy as np
+from aiohttp import web, MultipartWriter
 from PIL import Image
 
-# Streamed HTML Page
-PAGE = """\
-<html>
-<head>
-<title>IR MJPEG Streaming</title>
-</head>
-<body>
-<h1>Live IR MJPEG Stream</h1>
-<img src="stream.mjpg" width="640" height="480" />
-</body>
-</html>
-"""
+import aravis
 
-class StreamingOutput:
-    def __init__(self, frame_dir):
-        self.condition = Condition()
-        self.frame = None
-        self.frame_dir = frame_dir
-        self.running = True
+logging.basicConfig()
+log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
+logger = logging.getLogger("server")
+log_level = getattr(logging, log_level)
+logger.setLevel(log_level)
+
+
+class StreamHandler:
+
+    def __init__(self, cam):
+        self._cam = cam
+
+    async def __call__(self, request):
+        my_boundary = 'image-boundary'
+        response = web.StreamResponse(
+            status=200,
+            reason='OK',
+            headers={
+                'Content-Type': 'multipart/x-mixed-replace;boundary={}'.format(my_boundary)
+            }
+        )
+        await response.prepare(request)
+        while True:
+            frame = await self._cam.get_frame()
+            #time.sleep(1/30)
+            with MultipartWriter('image/jpeg', boundary=my_boundary) as mpwriter:
+                mpwriter.append(frame, {
+                    'Content-Type': 'image/jpeg'
+                })
+                try:
+                    await mpwriter.write(response, close_boundary=False)
+                except ConnectionResetError :
+                    logger.warning("Client connection closed")
+                    break
+            await response.write(b"\r\n")
+
+class cameraManager:
+    def __init__(self, idx, frameQueue:queue.LifoQueue, width, height, camScale:int = 1):
+        self._idx = idx
+        
+        self.scale = camScale
+        self.width = width
+        self.height = height
+        self.frameQueue = frameQueue
+
+    @property
+    def identifier(self):
+        return self._idx
+
+    async def get_frame(self):
+        
+        
+        frame = self.frameQueue.get()
+        irFrame = np.asarray(frame)
+        if self.scale != 1:
+            irFrame = cv2.resize(irFrame, dsize=(self.width//self.scale, self.height//self.scale), interpolation=cv2.INTER_CUBIC)
+        outputFrame = cv2.imencode('.jpg', irFrame)[1]
+        
+
+        return outputFrame.tobytes()
+    
+    def stop(self):
+        '''
+        dummy method
+        '''
+        pass
+
+
+
+class MjpegServer:
+
+    def __init__(self, cameras:cameraManager, host='0.0.0.0', port=8080):
+        self._port = port
+        self._host = host
+        self._app = web.Application()
+        self._cam_routes = []
+        self._viewfinder = cameras
 
     def start(self):
-        def run():
-            while self.running:
-                frames = sorted(glob.glob(os.path.join(self.frame_dir, "*.pgm")))
-                for frame_path in frames:
-                    try:
-                        with Image.open(frame_path) as img:
-                            buf = io.BytesIO()
-                            img.save(buf, format="JPEG")
-                            with self.condition:
-                                self.frame = buf.getvalue()
-                                self.condition.notify_all()
-                        os.remove(frame_path)
-                    except Exception as e:
-                        logging.warning(f"Error processing {frame_path}: {e}")
-                time.sleep(0.01)
-        Thread(target=run, daemon=True).start()
+        self._app.router.add_route("GET", "/", StreamHandler(self._viewfinder))
+        web.run_app(self._app, host=self._host, port=self._port)
 
     def stop(self):
-        self.running = False
+        '''
+        dummy method
+        actions to be take on closing can be added here
+        '''
+        pass
 
-
-class StreamingHandler(server.BaseHTTPRequestHandler):
-    def do_GET(self):
-        if self.path == '/':
-            self.send_response(301)
-            self.send_header('Location', '/index.html')
-            self.end_headers()
-        elif self.path == '/index.html':
-            content = PAGE.encode('utf-8')
-            self.send_response(200)
-            self.send_header('Content-Type', 'text/html')
-            self.send_header('Content-Length', len(content))
-            self.end_headers()
-            self.wfile.write(content)
-        elif self.path == '/stream.mjpg':
-            self.send_response(200)
-            self.send_header('Cache-Control', 'no-cache')
-            self.send_header('Content-Type', 'multipart/x-mixed-replace; boundary=FRAME')
-            self.end_headers()
-            try:
-                while True:
-                    with output.condition:
-                        output.condition.wait()
-                        frame = output.frame
-                    self.wfile.write(b'--FRAME\r\n')
-                    self.send_header('Content-Type', 'image/jpeg')
-                    self.send_header('Content-Length', len(frame))
-                    self.end_headers()
-                    self.wfile.write(frame)
-                    self.wfile.write(b'\r\n')
-            except Exception as e:
-                logging.warning(f"Client disconnected: {e}")
-        else:
-            self.send_error(404)
-            self.end_headers()
-
-
-class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
-    allow_reuse_address = True
-    daemon_threads = True
+def irFrameGen(irFrameQueue:queue.LifoQueue, dims):
+    
+    try:
+        i = 0
+        for buf in aravis.ir_buffer_streamer():
+            i += 1
+            #if i%2 == 0:
+            timeStart = time.monotonic_ns()
+            # This will run forever, or until you break
+                
+            if buf:
+                img = Image.frombytes('L', (dims[0], dims[1]), bytes(buf))
+            #print(type(img))
+            if irFrameQueue.full():
+                #print("Queue Cleared")
+                irFrameQueue.queue.clear()
+                
+                
+            irFrameQueue.put(img)
+            timeEnd = time.monotonic_ns()
+            #print(timeEnd-timeStart)
+            
+    except KeyboardInterrupt:
+        logger.warning("Keyboard Interrupt, exiting...")
+        
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--port', type=int, default=8002, help='Port to serve the stream')
-    parser.add_argument('--frame_dir', default='/home/daedalus/daedalus_core/aravis-c-examples/build/out_frames', help='Directory with .pgm frames')
-    parser.add_argument('--cmd', default='/home/daedalus/daedalus_core/aravis-c-examples/build/06-multi-save -o /home/daedalus/daedalus_core/aravis-c-examples/build/out_frames -f 5',
-                        help='Command to capture IR frames')
+    
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument(
+        "--scale", 
+        default="1",
+        type=float,
+        help="Webpage viewfinder scale"
+    )
+    parser.add_argument(
+        "--port",
+        default=8080,
+        type=int,
+        help="Port at which server is available on"
+    )
     args = parser.parse_args()
 
-    # Clean frame directory
-    os.makedirs(args.frame_dir, exist_ok=True)
-    for f in glob.glob(os.path.join(args.frame_dir, '*.pgm')):
-        os.remove(f)
+    frameRate = 30
+    cam_width = 640
+    cam_height = 480
+    irFrameQueue = queue.LifoQueue(maxsize=4096)
+    irProcess = Thread(target=irFrameGen, args=(irFrameQueue,(cam_width, cam_height) ), daemon=True) 
+    
+    cameras = cameraManager(0, irFrameQueue, height=cam_height, width=cam_width, camScale=int(1/args.scale))
+    server = MjpegServer(cameras=cameras, port=args.port)
 
-    # Start frame capture process
-    subprocess.Popen(args.cmd, shell=True)
-
-    # Start streamer
-    output = StreamingOutput(args.frame_dir)
-    output.start()
-
-    print(f"Serving MJPEG stream on port {args.port}...")
     try:
-        server = StreamingServer(('', args.port), StreamingHandler)
-        server.serve_forever()
+        irProcess.start()
+        server.start()
+    except KeyboardInterrupt:
+        logger.warning("Keyboard Interrupt, exiting...")
     finally:
-        output.stop()
+        irProcess.join()
+        server.stop()
+        cameras.stop()
