@@ -68,12 +68,9 @@ class cameraManager:
         
         
         frame = self.frameQueue.get()
-
         irFrame = np.asarray(frame)
-         
         if self.scale != 1:
             irFrame = cv2.resize(irFrame, dsize=(self.width//self.scale, self.height//self.scale), interpolation=cv2.INTER_CUBIC)
-        
         outputFrame = cv2.imencode('.jpg', irFrame)[1]
         
 
@@ -107,21 +104,6 @@ class MjpegServer:
         '''
         pass
 
-def frameLocker(irFrameQueue:queue.LifoQueue, frameOut:queue.LifoQueue, frameRate:int):
-    try:
-        while True:
-            try:
-                irFrame = irFrameQueue.get_nowait()
-                frameOut.put(irFrame)
-            except:
-                pass
-            time.sleep(1/frameRate)
-            if frameOut.full():
-                #print("Queue Cleared")
-                frameOut.queue.clear()
-    except KeyboardInterrupt:
-        logger.warning("Keyboard Interrupt, exiting...")
-
 def irFrameGen(irFrameQueue:queue.LifoQueue, dims):
     
     try:
@@ -132,7 +114,8 @@ def irFrameGen(irFrameQueue:queue.LifoQueue, dims):
             timeStart = time.monotonic_ns()
             # This will run forever, or until you break
                 
-            img = Image.frombytes('L', (dims[0], dims[1]), bytes(buf))
+            if buf:
+                img = Image.frombytes('L', (dims[0], dims[1]), bytes(buf))
             #print(type(img))
             if irFrameQueue.full():
                 #print("Queue Cleared")
@@ -168,25 +151,18 @@ if __name__ == "__main__":
     frameRate = 30
     cam_width = 640
     cam_height = 480
-            
     irFrameQueue = queue.LifoQueue(maxsize=4096)
-
-    frameOut = queue.LifoQueue(maxsize=60)
-
     irProcess = Thread(target=irFrameGen, args=(irFrameQueue,(cam_width, cam_height) ), daemon=True) 
-    frameThread = Thread(target=frameLocker, args=(irFrameQueue, frameOut, frameRate), daemon=True)
     
-    cameras = cameraManager(0, frameOut, height=cam_height, width=cam_width, camScale=int(1/args.scale))
+    cameras = cameraManager(0, irFrameQueue, height=cam_height, width=cam_width, camScale=int(1/args.scale))
     server = MjpegServer(cameras=cameras, port=args.port)
 
     try:
         irProcess.start()
-        frameThread.start()
         server.start()
     except KeyboardInterrupt:
         logger.warning("Keyboard Interrupt, exiting...")
     finally:
         irProcess.join()
-        frameThread.join()
         server.stop()
         cameras.stop()

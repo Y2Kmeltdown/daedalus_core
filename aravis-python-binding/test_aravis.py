@@ -27,22 +27,28 @@ try:
     #     img = img.save(f"data/test{i}.jpg")
 
     i = 0
-    timeStart = time.monotonic_ns()
+    frameStart = time.monotonic_ns()
     for buf in aravis.ir_buffer_streamer(framerate = 30):
+        i += 1
+        print(f"Frame {i}")
+        computeStart = time.monotonic_ns()
         
         
         #img.save(f"data/test{i}.jpg")
         #print(len(buf))
-        i += 1
         #if i%2 == 0:
 
         #time.sleep(1/15)
-    
-        img = Image.frombytes('L', (width, height), bytes(buf))
-        timeEnd = time.monotonic_ns()
-        print(f"Python_Time:{timeEnd-timeStart}")
+        
+        if buf:
+            img = Image.frombytes('L', (width, height), bytes(buf))
+        computeEnd= time.monotonic_ns()
+        frameEnd = time.monotonic_ns()
+        print(f"Frame Timing:{frameEnd-frameStart}")
+        print(f"Compute Timing:{computeEnd-computeStart}")
 
-        timeStart = time.monotonic_ns()
+
+        frameStart = time.monotonic_ns()
         #time.sleep(2)
         #print(timeEnd-timeStart)
         # if i == 30:

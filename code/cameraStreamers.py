@@ -1,15 +1,18 @@
 import argparse
 import io
-from threading import Condition
+from threading import Condition, Thread
 from multiprocessing import Process, Pipe
 import logging
 import os
 import time
+import queue
 
+from PIL import Image
 import cv2
 import numpy as np
 from aiohttp import web, MultipartWriter
 import neuromorphic_drivers as nd
+import aravis
 
 from picamera2 import Picamera2
 from picamera2.encoders import JpegEncoder
@@ -60,20 +63,30 @@ class StreamHandler:
             await response.write(b"\r\n")
 
 class cameraManager:
-    def __init__(self, idx, p_output, width, height, camScale:int = 1):
+    def __init__(self, idx, event_frame_out, eventFrameRequest ,irFramePipe , irFrameRequest, width, height, camScale:int = 1):
         self._idx = idx
-        
         self.scale = camScale
         self.width = width
         self.height = height
-        self.framepipe = p_output
+
+        self.eventFramePipe = event_frame_out
+        self.eventFrameRequest = eventFrameRequest
+
+        self.irFramePipe = irFramePipe
+        self.irFrameRequest = irFrameRequest
 
     @property
     def identifier(self):
         return self._idx
 
     async def get_frame(self):
-        eventFrame = self.framepipe.recv()
+        self.eventFrameRequest.send(None)
+        eventFrame = self.eventFramePipe.recv()
+
+        self.irFrameRequest.send(None)
+        irFrame = self.irFramePipe.recv()
+        irFrame = np.asarray(irFrame)
+
         with output.condition:
             output.condition.wait()
             convBytes = output.frame
@@ -82,11 +95,13 @@ class cameraManager:
         if self.scale != 1:
             eventFrame = cv2.resize(eventFrame, dsize=(self.width//self.scale, self.height//self.scale), interpolation=cv2.INTER_CUBIC)
             convFrame = cv2.resize(convFrame, dsize=(self.width//self.scale, self.height//self.scale), interpolation=cv2.INTER_CUBIC)
+            irFrame = cv2.resize(irFrame, dsize=(self.width//self.scale, self.height//self.scale), interpolation=cv2.INTER_CUBIC)
         
         flippedEventFrame = np.flip(eventFrame, 0)
         rgbEventFrame = np.stack((flippedEventFrame,)*3, axis=-1)
+        rgbIRFrame = np.stack((irFrame,)*3, axis=-1)
         
-        mergedFrame = np.concatenate((rgbEventFrame, convFrame), 0)
+        mergedFrame = np.concatenate((rgbEventFrame, convFrame, rgbIRFrame), 0)
 
         outputFrame = cv2.imencode('.jpg', mergedFrame)[1]
 
@@ -135,7 +150,7 @@ def eventProducer(p_input):
                     p_input.send(packet)
                 
 
-def eventAccumulator(event_out, frame_in, dims):
+def eventAccumulator(event_out, event_frame_in, eventFrameReqeust,dims):
     frame = np.zeros(
         (dims[1], dims[0]),
         dtype=np.float32,
@@ -149,14 +164,37 @@ def eventAccumulator(event_out, frame_in, dims):
             packet["dvs_events"]["x"],
         ] = packet["dvs_events"]["on"]*255
         if time.monotonic_ns()-oldTime >= (1/50)*1000000000:
-            frame_in.send(frame)
+            
+            if eventFrameReqeust.poll():
+                event_frame_in.send(frame)
+                eventFrameReqeust.recv()
+
             frame = np.zeros(
                 (dims[1], dims[0]),
                 dtype=np.float32,
             )+127
             oldTime = time.monotonic_ns()
 
+def irFrameGen(irFrameIn, irFrameRequest, dims):
     
+    try:
+        i = 0
+        for buf in aravis.ir_buffer_streamer():
+            i += 1
+            #if i%2 == 0:
+            timeStart = time.monotonic_ns()
+            # This will run forever, or until you break
+                
+            if buf:
+                img = Image.frombytes('L', (dims[0], dims[1]), bytes(buf))
+                if irFrameRequest.poll():
+                    irFrameIn.send(img)
+                    irFrameRequest.recv()
+            timeEnd = time.monotonic_ns()
+            #print(timeEnd-timeStart)
+            
+    except KeyboardInterrupt:
+        logger.warning("Keyboard Interrupt, exiting...")
 
 if __name__ == "__main__":
     configuration = nd.prophesee_evk4.Configuration(
@@ -199,23 +237,43 @@ if __name__ == "__main__":
     with nd.open(serial=args.serial) as device:
         cam_width = device.properties().width
         cam_height = device.properties().height
+
+    ir_cam_width = 640
+    ir_cam_height = 480
+    irFrameOut, irFrameIn = Pipe()
+    ir_frame_request_output, ir_frame_request_input = Pipe()
+    irProcess = Process(target=irFrameGen, args=(irFrameIn, ir_frame_request_output,(ir_cam_width, ir_cam_height) ), daemon=True) 
                 
     event_output, event_input = Pipe()
-    frame_output, frame_input = Pipe()
+
+    event_frame_output, event_frame_input = Pipe()
+    event_frame_request_output, event_frame_request_input = Pipe()
 
     eventProcess = Process(target=eventProducer, args=(event_input, ), daemon=True)   
-    frameProcess = Process(target=eventAccumulator, args=(event_output, frame_input,(cam_width, cam_height) ), daemon=True) 
+    frameProcess = Process(target=eventAccumulator, args=(event_output, event_frame_input, event_frame_request_output, (cam_width, cam_height) ), daemon=True) 
     
-    cameras = cameraManager(0, frame_output, height=cam_height, width=cam_width, camScale=int(1/args.scale))
+    cameras = cameraManager(
+        0, 
+        event_frame_output, 
+        event_frame_request_input, 
+        irFrameOut, 
+        ir_frame_request_input,
+        height=cam_height, 
+        width=cam_width, 
+        camScale=int(1/args.scale)
+        )
+    
     server = MjpegServer(cameras=cameras, port=args.port)
 
     try:
+        irProcess.start()
         eventProcess.start()
         frameProcess.start()
         server.start()
     except KeyboardInterrupt:
         logger.warning("Keyboard Interrupt, exiting...")
     finally:
+        irProcess.join()
         eventProcess.join()
         frameProcess.join()
         server.stop()
