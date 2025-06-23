@@ -1,15 +1,19 @@
 import aravis
-import cv2
-import numpy as np
-
-import io
 from PIL import Image
-from multiprocessing import Process, Pipe
 from queue import LifoQueue
 import time
+from threading import Thread
 
 width = 640
 height = 480
+testQueue = LifoQueue(maxsize=100)
+
+def queueRetriever(testQueue:LifoQueue):
+    try:
+        while True:
+            data = testQueue.get()
+    except:
+        pass
 
 try:
     # buffer = aravis.get_camera_buffer()
@@ -22,13 +26,14 @@ try:
     #     print(len(buffer))
     #     img = Image.frombytes('L', (width, height), bytes(buffer))
     #     img = img.save(f"data/test{i}.jpg")
-
+    testThread = Thread(target=queueRetriever, args=(testQueue, ), daemon=True)
+    testThread.start()
     i = 0
     frameStart = time.monotonic_ns()
     totalStart = time.monotonic_ns()
     computeTime = ""
     for buf in aravis.ir_buffer_streamer():
-        frameNo = f"Frame: {i}"
+        frameNo = f"Frame: {i-1}"
         totalEnd = time.monotonic_ns()
         totalTime = f"Total Time:{totalEnd-totalStart}"
         totalStart = time.monotonic_ns()
@@ -39,9 +44,12 @@ try:
         i += 1
         if buf:
             img = Image.frombytes('L', (width, height), bytes(buf))
+            if testQueue.full():
+                testQueue.queue.clear()
+            testQueue.put_nowait(img)
         
-        if i % 2:
-            time.sleep(0.001)
+        # if i % 2:
+        #     time.sleep(0.001)
             
         computeEnd = time.monotonic_ns()
         computeTime = f"Compute Time:{computeEnd-computeStart}"
