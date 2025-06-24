@@ -52,23 +52,24 @@ class StreamHandler:
             await response.write(b"\r\n")
 
 class cameraManager:
-    def __init__(self, idx, frameQueue:queue.LifoQueue, width, height, camScale:int = 1):
+    def __init__(self, idx, irFramePipe, irFrameRequest, width, height, camScale:int = 1):
         self._idx = idx
         
         self.scale = camScale
         self.width = width
         self.height = height
-        self.frameQueue = frameQueue
+        self.irFramePipe = irFramePipe
+        self.irFrameRequest = irFrameRequest
 
     @property
     def identifier(self):
         return self._idx
 
     async def get_frame(self):
-        
-        
-        frame = self.frameQueue.get()
-        irFrame = np.asarray(frame)
+
+        self.irFrameRequest.send(None)
+        irFrame = self.irFramePipe.recv()
+        irFrame = np.asarray(irFrame)
         if self.scale != 1:
             irFrame = cv2.resize(irFrame, dsize=(self.width//self.scale, self.height//self.scale), interpolation=cv2.INTER_CUBIC)
         outputFrame = cv2.imencode('.jpg', irFrame)[1]
@@ -104,7 +105,7 @@ class MjpegServer:
         '''
         pass
 
-def irFrameGen(irFrameQueue:queue.LifoQueue, dims):
+def irFrameGen(irFrameIn, irFrameRequest,dims):
     
     try:
         i = 0
@@ -112,16 +113,18 @@ def irFrameGen(irFrameQueue:queue.LifoQueue, dims):
             i += 1
             #if i%2 == 0:
             timeStart = time.monotonic_ns()
-            # This will run forever, or until you break
-                
+            # This will run forever, or until you break 
             if buf:
                 img = Image.frombytes('L', (dims[0], dims[1]), bytes(buf))
+                if irFrameRequest.poll():
+                    irFrameIn.send(img)
+                    irFrameRequest.recv()
                 #print(type(img))
-                if irFrameQueue.full():
-                    #print("Queue Cleared")
-                    irFrameQueue.queue.clear()
+                # if irFrameQueue.full():
+                #     #print("Queue Cleared")
+                #     irFrameQueue.queue.clear()
                 
-                irFrameQueue.put(img)
+                # irFrameQueue.put(img)
             timeEnd = time.monotonic_ns()
             #print(timeEnd-timeStart)
             
@@ -151,9 +154,11 @@ if __name__ == "__main__":
     cam_width = 640
     cam_height = 480
     irFrameQueue = queue.LifoQueue(maxsize=4096)
-    irProcess = Thread(target=irFrameGen, args=(irFrameQueue,(cam_width, cam_height) ), daemon=True) 
+    irFrameOut, irFrameIn = Pipe()
+    irRequestOut, irRequestIn = Pipe()
+    irProcess = Process(target=irFrameGen, args=(irFrameIn, irRequestOut, (cam_width, cam_height) ), daemon=True) 
     
-    cameras = cameraManager(0, irFrameQueue, height=cam_height, width=cam_width, camScale=int(1/args.scale))
+    cameras = cameraManager(0, irFrameOut, irRequestIn, height=cam_height, width=cam_width, camScale=int(1/args.scale))
     server = MjpegServer(cameras=cameras, port=args.port)
 
     try:
