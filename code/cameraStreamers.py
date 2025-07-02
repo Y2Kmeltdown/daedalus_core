@@ -135,14 +135,8 @@ class MjpegServer:
         '''
         pass
 
-def eventProducer(p_input):
-        configuration = nd.prophesee_evk4.Configuration(
-        biases=nd.prophesee_evk4.Biases(
-            diff_off=102,  # default: 102
-            diff_on=73,  # default: 73
-            )
-        )
-        with nd.open(serial=args.serial, configuration=configuration) as device:
+def eventProducer(p_input, serial, config):
+        with nd.open(serial=serial, configuration=config) as device:
             print(f"Successfully started EVK4 {args.serial}")
 
             for status, packet in device:
@@ -196,6 +190,15 @@ def irFrameGen(irFrameIn, irFrameRequest, dims):
     except KeyboardInterrupt:
         logger.warning("Keyboard Interrupt, exiting...")
 
+def check_event_camera(serialNumberList):
+    evkSerialList = [i.serial for i in nd.list_devices()]
+    try:
+        serialNumbers = [i for i in evkSerialList if i in serialNumberList]
+        return serialNumbers
+    except Exception as e:
+        print(f"Error during serial number check: {e}", flush=True)
+        return None
+
 if __name__ == "__main__":
     configuration = nd.prophesee_evk4.Configuration(
         biases=nd.prophesee_evk4.Biases(
@@ -207,8 +210,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument(
         "--serial", 
-        default="00051501",
-        help="Event camera serial number (for example 00050423)"
+        default="",
+        help="Camera serial number list. Will start recording data from all specified cameras if they are connected. If  (for example 00050423 00051505 00051503)",
+        nargs="+",
+        type=str
     )
     parser.add_argument(
         "--scale", 
@@ -229,12 +234,29 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
+    configuration = nd.prophesee_evk4.Configuration(
+        biases=nd.prophesee_evk4.Biases(
+            diff_off=102,  # default: 102
+            diff_on=73,    # default: 73
+        )
+    )
+
+    if args.serial == "":
+        evkSerialList = [i.serial for i in nd.list_devices()]
+    else:
+        evkSerialList = check_event_camera(args.serial)
+    
+    if evkSerialList:
+        pass
+    else:
+        print("[INFO] No Event Cameras connected to system.", flush=True)
+
     picam2 = Picamera2(int(args.picam))
     picam2.configure(picam2.create_video_configuration(main={"size": (1280, 960)}))
     output = StreamingOutput()
     picam2.start_recording(JpegEncoder(), FileOutput(output))
 
-    with nd.open(serial=args.serial) as device:
+    with nd.open(serial=evkSerialList[0]) as device:
         cam_width = device.properties().width
         cam_height = device.properties().height
 
@@ -249,7 +271,7 @@ if __name__ == "__main__":
     event_frame_output, event_frame_input = Pipe()
     event_frame_request_output, event_frame_request_input = Pipe()
 
-    eventProcess = Process(target=eventProducer, args=(event_input, ), daemon=True)   
+    eventProcess = Process(target=eventProducer, args=(event_input, serialList[0], configuration), daemon=True)   
     frameProcess = Process(target=eventAccumulator, args=(event_output, event_frame_input, event_frame_request_output, (cam_width, cam_height) ), daemon=True) 
     
     cameras = cameraManager(
