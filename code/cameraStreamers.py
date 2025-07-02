@@ -271,7 +271,7 @@ if __name__ == "__main__":
     event_frame_output, event_frame_input = Pipe()
     event_frame_request_output, event_frame_request_input = Pipe()
 
-    eventProcess = Process(target=eventProducer, args=(event_input, serialList[0], configuration), daemon=True)   
+    eventProcess = Process(target=eventProducer, args=(event_input, evkSerialList[0], configuration), daemon=True)   
     frameProcess = Process(target=eventAccumulator, args=(event_output, event_frame_input, event_frame_request_output, (cam_width, cam_height) ), daemon=True) 
     
     cameras = cameraManager(
