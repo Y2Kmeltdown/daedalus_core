@@ -6,7 +6,7 @@ This branch is maintained by: Sami Arja and Damien Rice
 ## Table of Contents
 - [Daedalus Core](#daedalus-core)
   - [Table of Contents](#table-of-contents)
-  - [TODO](#todo)
+  - [Current TODOs](#current-todos)
   - [About](#about)
   - [Simple Install (Preferred)](#simple-install-preferred)
     - [Fast Manual Installation](#fast-manual-installation)
@@ -44,9 +44,17 @@ This branch is maintained by: Sami Arja and Damien Rice
     - [Thermal/IR camera SDK from manufacturer](#thermalir-camera-sdk-from-manufacturer)
 
 
-## TODO
 
-- [] Parse .jsonl to visualise data from every sensor in post-processing
+### 🎯 Current TODOs
+
+<ul>
+  <li><input type="checkbox" checked> Add script to save IR frames to USB/SD card</li>
+</ul>
+
+<ul>
+  <li><input type="checkbox" disabled> Parse <code>.jsonl</code> to visualize data in post-processing</li>
+</ul>
+
 
 
 ## About
