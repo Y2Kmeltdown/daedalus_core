@@ -1,11 +1,12 @@
 # Daedalus Core
 
-This branch is maintained by: Sami Arja
+This branch is maintained by: Sami Arja and Damien Rice
 
 
 ## Table of Contents
 - [Daedalus Core](#daedalus-core)
   - [Table of Contents](#table-of-contents)
+  - [TODO](#todo)
   - [About](#about)
   - [Simple Install (Preferred)](#simple-install-preferred)
     - [Fast Manual Installation](#fast-manual-installation)
@@ -42,6 +43,10 @@ This branch is maintained by: Sami Arja
     - [Assign static IP address](#assign-static-ip-address)
     - [Thermal/IR camera SDK from manufacturer](#thermalir-camera-sdk-from-manufacturer)
 
+
+## TODO
+
+- [] Parse .jsonl to visualise data from every sensor in post-processing
 
 
 ## About
