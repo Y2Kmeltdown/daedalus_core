@@ -1,26 +1,3 @@
-# import aravis
-# from PIL import Image
-
-# W, H = 640, 480
-# PAYLOAD = W * H
-
-# for idx, buf in enumerate(aravis.ir_buffer_streamer()):
-#     raw = bytes(buf)               # grab the buffer’s bytes
-#     ln  = len(raw)
-
-#     # if it’s too small, skip
-#     if ln < PAYLOAD:
-#         print(f"[!] frame {idx} too small ({ln} < {PAYLOAD}), skipping")
-#         continue
-#     # if it’s larger (e.g. header+payload), take just the first PAYLOAD bytes
-#     if ln > PAYLOAD:
-#         raw = raw[:PAYLOAD]
-
-#     # build and save the L-mode image
-#     img = Image.frombuffer('L', (W, H), raw, 'raw', 'L', 0, 1)
-#     img.save(f"../frame_{idx:04d}.png")
-#     print(f"Frame {idx} saved")
-
 #!/usr/bin/env python3
 import time
 import datetime
@@ -28,18 +5,21 @@ import argparse
 import sys
 import io
 import os
+import subprocess
 
 from PIL import Image
 import aravis
 import daedalus_utils
+
+# subprocess.run(["sudo", "ip", "addr", "add", "169.254.100.1/16", "dev", "eth0"], check=True)
+# subprocess.run(["sudo", "ip", "link", "set", "dev", "eth0", "up"], check=True)
 
 W, H = 640, 480
 PAYLOAD = W * H
 
 def ir_frame_logger(data_handler, timer: float):
     """
-    Pulls frames from aravis.ir_buffer_streamer(), wraps them as PNGs,
-    and hands them off to data_handler.write_data(...).
+    Pulls frames from aravis.ir_buffer_streamer(), wraps them as PNGs
     """
     for idx, buf in enumerate(aravis.ir_buffer_streamer()):
         raw = bytes(buf)
