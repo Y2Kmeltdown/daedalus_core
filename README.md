@@ -47,15 +47,8 @@ This branch is maintained by: Sami Arja and Damien Rice
 
 ### 🎯 Current TODOs
 
-<ul>
-  <li><input type="checkbox" checked> Add script to save IR frames to USB/SD card</li>
-</ul>
-
-<ul>
-  <li><input type="checkbox" disabled> Parse <code>.jsonl</code> to visualize data in post-processing</li>
-</ul>
-
-
+- [x] Add script to save IR frames to USB/SD card
+- [ ] Parse `.jsonl` to visualize data from every sensor in post-processing
 
 ## About
 
