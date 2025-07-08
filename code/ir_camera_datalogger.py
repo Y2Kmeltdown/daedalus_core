@@ -10,13 +10,39 @@ import subprocess
 from PIL import Image
 import aravis
 import daedalus_utils
+import shlex
 
-# subprocess.run(["sudo", "ip", "addr", "add", "169.254.100.1/16", "dev", "eth0"], check=True)
-# subprocess.run(["sudo", "ip", "link", "set", "dev", "eth0", "up"], check=True)
 
 W, H = 640, 480
 PAYLOAD = W * H
 
+
+IP_ADDR   = "169.254.100.1/16"
+IFACE     = "eth0"
+
+def configure_interface(addr: str = IP_ADDR, iface: str = IFACE) -> None:
+    """Add a link-local address and bring the interface up if needed."""
+    # 1. Need CAP_NET_ADMIN privileges → easiest path: run script with sudo
+    if os.geteuid() != 0:
+        sys.exit("[ERROR] Please run this script with sudo (needs NET_ADMIN)")
+
+    # 2. Is the address already assigned?
+    has_ip = subprocess.run(
+        ["ip", "-4", "-o", "addr", "show", "dev", iface],
+        capture_output=True, text=True, check=False
+    )
+    if addr.split("/")[0] in has_ip.stdout:
+        print(f"[INFO] {iface} already has {addr}")
+    else:
+        print(f"[INFO] Adding {addr} to {iface}")
+        subprocess.run(
+            ["ip", "addr", "add", addr, "dev", iface],
+            check=True
+        )
+
+    # 3. Make sure the link is up
+    subprocess.run(["ip", "link", "set", "dev", iface, "up"], check=True)
+    
 def ir_frame_logger(data_handler, timer: float):
     """
     Pulls frames from aravis.ir_buffer_streamer(), wraps them as PNGs
@@ -49,6 +75,7 @@ def ir_frame_logger(data_handler, timer: float):
         time.sleep(timer)
 
 if __name__ == "__main__":
+    configure_interface()
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
