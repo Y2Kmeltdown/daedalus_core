@@ -89,7 +89,7 @@ if __name__ == "__main__":
         )
     parser.add_argument(
         "--timer",
-        default=5,
+        default=1,
         type=int,
         help="Time in seconds between snapshots"
     )

@@ -91,7 +91,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--timer",
-        default=5.0,
+        default=1.0,
         type=float,
         help="Seconds between consecutive snapshots",
     )
