@@ -49,6 +49,7 @@ This branch is maintained by: Sami Arja and Damien Rice
 
 - [x] Add script to save IR frames to USB/SD card
 - [ ] Parse `.jsonl` to visualize data from every sensor in post-processing
+- [ ] Combine RGB-IR into a single (multi-thread?) script
 
 ## About
 
