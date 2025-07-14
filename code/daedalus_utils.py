@@ -2,7 +2,8 @@ import os
 import subprocess
 import time
 import serial
-import threading
+from threading import Thread, Lock
+import pathlib
 import queue
 import re
 import os
@@ -15,6 +16,8 @@ from typing import List, Dict
 
 import pyudev
 import numpy as np
+
+data_lock = Lock()
 
 class data_handler:
     def __init__(self, sensorName:str, extension:str ,dataPath:str, backupPath:str, recordingTime:int ,socketPath:str = None, bufferInterval:int = 10):
@@ -35,7 +38,7 @@ class data_handler:
         if socketPath:
             self.socketPath = Path(socketPath)
             self.socketQueue = queue.Queue()
-            self.socketWrite = threading.Thread(target=self._socketThread, kwargs={"socketQueue":self.socketQueue, "socketPath":str(self.socketPath)}, daemon=True)
+            self.socketWrite = Thread(target=self._socketThread, kwargs={"socketQueue":self.socketQueue, "socketPath":str(self.socketPath)}, daemon=True)
             self.socketThreadActive = True
             self.socketWrite.start()
         else:
@@ -52,7 +55,7 @@ class data_handler:
         self.record_time = recordingTime
         if self.record_time > 0:
             print(f"[INFO] {sensorName} Filename Generator Thread Starting", flush=True)
-            fileNameThread = threading.Thread(target=self._savepoint_thread, daemon=True)
+            fileNameThread = Thread(target=self._savepoint_thread, daemon=True)
             fileNameThread.start()
         
         
@@ -162,12 +165,12 @@ class data_handler:
 
                 if self._dataDirExists:
                     dataFile = self.dataPath / self.file_name
-                    dataWrite = threading.Thread(target=self._writerThread, kwargs={"data":writeData, "path":dataFile}, daemon=True)
+                    dataWrite = Thread(target=self._writerThread, kwargs={"data":writeData, "path":dataFile}, daemon=True)
                     dataWrite.start()
 
                 if self._backupDirExists:
                     backupFile = self.backupPath / self.file_name
-                    backupWrite = threading.Thread(target=self._writerThread, kwargs={"data":writeData, "path":backupFile}, daemon=True)
+                    backupWrite = Thread(target=self._writerThread, kwargs={"data":writeData, "path":backupFile}, daemon=True)
                     backupWrite.start()
 
                 self.buffer.clear()  # Clear buffer after writing
@@ -416,7 +419,7 @@ class transceiver:
             dsrdtr=False,       # disable hardware flow control
             writeTimeout=0
         )
-        self._serial_lock = threading.Lock()
+        self._serial_lock = Lock()
         self._initialise_transceiver()
         self._stats = {
             'messages_received': 0,
@@ -427,8 +430,8 @@ class transceiver:
 
     def _initialise_transceiver(self):
         # Create separate threads for transmit and receive
-        transmitThread = threading.Thread(target=self._transmitter, daemon=True)
-        receiveThread = threading.Thread(target=self._receiver, daemon=True)
+        transmitThread = Thread(target=self._transmitter, daemon=True)
+        receiveThread = Thread(target=self._receiver, daemon=True)
         transmitThread.start()
         receiveThread.start()
         
@@ -574,4 +577,73 @@ class transceiver:
             self._receiveQueue.task_done()
             return data
         except queue.Empty:
+            return None
+
+class socketServer(Thread):
+    def __init__(self, name:str, socketFile:any, socketQueue:queue.Queue, buffer:bool = False, bufsize:int = 4096):
+        super().__init__(daemon=True)
+
+        self.name = name
+
+        self.dataList = []
+
+        if type(socketFile) is pathlib.Path:
+            self.socketFile = socketFile
+        elif type(socketFile) is str:
+            self.socketFile = pathlib.Path(socketFile)
+        elif type(socketFile) is bytes:
+            self.socketFile = pathlib.Path(str(socketFile))
+        else:
+            raise Exception("socketFile must be a Path, String or Bytes object")
+
+        self.bufsize = bufsize
+
+        self.buffer = buffer
+        if buffer:
+            self.socketList = []
+        else:
+            self.socketQueue = socketQueue
+        
+
+    def run(self):
+        if os.path.exists(str(self.socketFile)):
+            os.remove(str(self.socketFile))
+
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+            
+            s.bind(str(self.socketFile))
+            s.listen(1)
+            while True:
+                conn, addr = s.accept()
+                print(f"[INFO] {self.name} socket connected.", flush=True)
+                socketBuffer = []
+                while True:
+                    data = conn.recv(self.bufsize)
+                    
+                    if data[-5:] == b"EOT\x03\x04":
+                        socketBuffer.append(data[:-5])
+                        #print("[INFO] EOT Detected")
+                        
+                        socketOut = b"".join(socketBuffer)
+                        socketBuffer = []
+                        if self.buffer:
+                            with data_lock:
+                                self.dataList.append(socketOut)
+                        else:
+                            self.socketQueue.put(socketOut)
+                            self.socketQueue.task_done()
+                    elif data != b"":
+                        socketBuffer.append(data)
+                        #print(data[-5:])
+                    elif data == b"":
+                        print(f"[WARNING] {self.name} socket disconnected. Attempting to reconnect.")
+                        break
+                    
+    def getDataBuffer(self):
+        if self.buffer:
+            with data_lock:
+                data = self.dataList
+                self.dataList = []
+            return data
+        else:
             return None

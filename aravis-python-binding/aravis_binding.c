@@ -272,8 +272,8 @@ static PyObject *ir_buffer_stream_iternext(PyObject *self) {
         ArvBuffer *buffer;
 
         // Pop and push a buffer to drop the data imediately and essentially switch to 30FPS
-        //buffer = arv_stream_pop_buffer (gen->stream);
-        //arv_stream_push_buffer(gen->stream, buffer);
+        buffer = arv_stream_pop_buffer (gen->stream);
+        arv_stream_push_buffer(gen->stream, buffer);
 
         buffer = arv_stream_pop_buffer (gen->stream);
         if (ARV_IS_BUFFER (buffer)) {

@@ -1,7 +1,7 @@
 import argparse
 import io
 from threading import Condition, Thread
-from multiprocessing import Process, Pipe
+from multiprocessing import Process, Pipe, Lock
 import logging
 import os
 import time
@@ -63,29 +63,33 @@ class StreamHandler:
             await response.write(b"\r\n")
 
 class cameraManager:
-    def __init__(self, idx, event_frame_out, eventFrameRequest ,irFramePipe , irFrameRequest, width, height, camScale:int = 1):
+    def __init__(self, idx, width, height, camScale:int = 1):
         self._idx = idx
         self.scale = camScale
         self.width = width
         self.height = height
 
-        self.eventFramePipe = event_frame_out
-        self.eventFrameRequest = eventFrameRequest
+        # self.eventFramePipe = event_frame_out
+        # self.eventFrameRequest = eventFrameRequest
 
-        self.irFramePipe = irFramePipe
-        self.irFrameRequest = irFrameRequest
+        # self.irFramePipe = irFramePipe
+        # self.irFrameRequest = irFrameRequest
 
     @property
     def identifier(self):
         return self._idx
 
     async def get_frame(self):
-        self.eventFrameRequest.send(None)
-        eventFrame = self.eventFramePipe.recv()
+        global output_ir_frame
+        global output_event_frame
 
-        self.irFrameRequest.send(None)
-        irFrame = self.irFramePipe.recv()
-        irFrame = np.asarray(irFrame)
+        #self.eventFrameRequest.send(None)
+        #eventFrame = self.eventFramePipe.recv()
+        eventFrame = output_event_frame
+
+        #self.irFrameRequest.send(None)
+        #irFrame = self.irFramePipe.recv()
+        irFrame = np.asarray(output_ir_frame)
 
         with output.condition:
             output.condition.wait()
@@ -134,57 +138,59 @@ class MjpegServer:
         actions to be take on closing can be added here
         '''
         pass
-
-def eventProducer(p_input, serial, config):
-        with nd.open(serial=serial, configuration=config) as device:
-            print(f"Successfully started EVK4 {args.serial}")
-
-            for status, packet in device:
-                if packet:
-                    p_input.send(packet)
-                
-
-def eventAccumulator(event_out, event_frame_in, eventFrameReqeust,dims):
+        
+def eventProducer(serial, config, dims):
+    global output_event_frame
     frame = np.zeros(
         (dims[1], dims[0]),
         dtype=np.float32,
     )+127
     oldTime = time.monotonic_ns()
-    # try:
-    while True:
-        packet = event_out.recv()
-        frame[
-            packet["dvs_events"]["y"],
-            packet["dvs_events"]["x"],
-        ] = packet["dvs_events"]["on"]*255
-        if time.monotonic_ns()-oldTime >= (1/50)*1000000000:
-            
-            if eventFrameReqeust.poll():
-                event_frame_in.send(frame)
-                eventFrameReqeust.recv()
+    with nd.open(serial=serial, configuration=config) as device:
+        print(f"Successfully started EVK4 {args.serial}")
 
-            frame = np.zeros(
-                (dims[1], dims[0]),
-                dtype=np.float32,
-            )+127
-            oldTime = time.monotonic_ns()
+        for status, packet in device:
+            if packet:
+                if "dvs_events" in packet:
+                    frame[
+                        packet["dvs_events"]["y"],
+                        packet["dvs_events"]["x"],
+                    ] = packet["dvs_events"]["on"]*255
+                    if time.monotonic_ns()-oldTime >= (1/50)*1000000000:
+                        with data_lock:
+                            output_event_frame = frame
+                        
+                        # if eventFrameRequest.poll():
+                        #     event_frame_in.send(frame)
+                        #     eventFrameRequest.recv()
 
-def irFrameGen(irFrameIn, irFrameRequest, dims):
+                        frame = np.zeros(
+                            (dims[1], dims[0]),
+                            dtype=np.float32,
+                        )+127
+                        oldTime = time.monotonic_ns()
+    
+
+def irFrameGen(dims):
+    global output_ir_frame
     
     try:
         i = 0
         for buf in aravis.ir_buffer_streamer():
             i += 1
             #if i%2 == 0:
-            timeStart = time.monotonic_ns()
+            #timeStart = time.monotonic_ns()
             # This will run forever, or until you break
                 
             if buf:
                 img = Image.frombytes('L', (dims[0], dims[1]), bytes(buf))
-                if irFrameRequest.poll():
-                    irFrameIn.send(img)
-                    irFrameRequest.recv()
-            timeEnd = time.monotonic_ns()
+
+                with data_lock:
+                    output_ir_frame = img
+                # if irFrameRequest.poll():
+                #     irFrameIn.send(img)
+                #     irFrameRequest.recv()
+            #timeEnd = time.monotonic_ns()
             #print(timeEnd-timeStart)
             
     except KeyboardInterrupt:
@@ -202,8 +208,8 @@ def check_event_camera(serialNumberList):
 if __name__ == "__main__":
     configuration = nd.prophesee_evk4.Configuration(
         biases=nd.prophesee_evk4.Biases(
-            diff_off=102,  # default: 102
-            diff_on=73,  # default: 73
+            diff_off=80,  # default: 102
+            diff_on=140,  # default: 73
         )
     )
 
@@ -251,6 +257,10 @@ if __name__ == "__main__":
     else:
         print("[INFO] No Event Cameras connected to system.", flush=True)
 
+    data_lock = Lock()
+    output_event_frame = None
+    output_ir_frame = None
+
     picam2 = Picamera2(int(args.picam))
     picam2.configure(picam2.create_video_configuration(main={"size": (1280, 960)}))
     output = StreamingOutput()
@@ -259,27 +269,18 @@ if __name__ == "__main__":
     with nd.open(serial=evkSerialList[0]) as device:
         cam_width = device.properties().width
         cam_height = device.properties().height
+    event_frame_output, event_frame_input = Pipe()
+    event_frame_request_output, event_frame_request_input = Pipe()
+    eventProcess = Process(target=eventProducer, args=(evkSerialList[0], configuration, (cam_width, cam_height)), daemon=True)
 
     ir_cam_width = 640
     ir_cam_height = 480
     irFrameOut, irFrameIn = Pipe()
     ir_frame_request_output, ir_frame_request_input = Pipe()
-    irProcess = Process(target=irFrameGen, args=(irFrameIn, ir_frame_request_output,(ir_cam_width, ir_cam_height) ), daemon=True) 
+    irProcess = Process(target=irFrameGen, args=((ir_cam_width, ir_cam_height), ), daemon=True) 
                 
-    event_output, event_input = Pipe()
-
-    event_frame_output, event_frame_input = Pipe()
-    event_frame_request_output, event_frame_request_input = Pipe()
-
-    eventProcess = Process(target=eventProducer, args=(event_input, evkSerialList[0], configuration), daemon=True)   
-    frameProcess = Process(target=eventAccumulator, args=(event_output, event_frame_input, event_frame_request_output, (cam_width, cam_height) ), daemon=True) 
-    
     cameras = cameraManager(
-        0, 
-        event_frame_output, 
-        event_frame_request_input, 
-        irFrameOut, 
-        ir_frame_request_input,
+        idx=0, 
         height=cam_height, 
         width=cam_width, 
         camScale=int(1/args.scale)
@@ -290,14 +291,12 @@ if __name__ == "__main__":
     try:
         irProcess.start()
         eventProcess.start()
-        frameProcess.start()
         server.start()
     except KeyboardInterrupt:
         logger.warning("Keyboard Interrupt, exiting...")
     finally:
         irProcess.join()
         eventProcess.join()
-        frameProcess.join()
         server.stop()
         cameras.stop()
         picam2.stop_recording()
