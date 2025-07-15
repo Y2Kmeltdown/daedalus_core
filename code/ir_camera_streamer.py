@@ -2,7 +2,7 @@ import argparse
 import io
 import queue
 from threading import Condition
-from multiprocessing import Process, Pipe
+from multiprocessing import Process, Pipe, Lock, Array, shared_memory
 from threading import Thread
 import logging
 import os
@@ -14,6 +14,9 @@ from aiohttp import web, MultipartWriter
 from PIL import Image
 
 import aravis
+
+data_lock = Lock()
+
 
 logging.basicConfig()
 log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
@@ -52,31 +55,26 @@ class StreamHandler:
             await response.write(b"\r\n")
 
 class cameraManager:
-    def __init__(self, idx, irFramePipe, irFrameRequest, width, height, camScale:int = 1):
+    def __init__(self, idx, ir_memory, width, height, camScale:int = 1):
         self._idx = idx
         
         self.scale = camScale
         self.width = width
         self.height = height
-        self.irFramePipe = irFramePipe
-        self.irFrameRequest = irFrameRequest
+        self.irMemory = ir_memory
+        
 
     @property
     def identifier(self):
         return self._idx
 
     async def get_frame(self):
-
-        self.irFrameRequest.send(None)
-        irFrame = self.irFramePipe.recv()
-        irFrame = np.asarray(irFrame)
+        irFrame = np.frombuffer(self.irMemory.buf[:], dtype=np.uint8)
+        irFrame = irFrame.reshape((self.height, self.width))
         if self.scale != 1:
             irFrame = cv2.resize(irFrame, dsize=(self.width//self.scale, self.height//self.scale), interpolation=cv2.INTER_CUBIC)
         outputFrame = cv2.imencode('.jpg', irFrame)[1]
-        
-
         return outputFrame.tobytes()
-    
     def stop(self):
         '''
         dummy method
@@ -105,29 +103,13 @@ class MjpegServer:
         '''
         pass
 
-def irFrameGen(irFrameIn, irFrameRequest,dims):
-    
+def irFrameGen(ir_shared_memory):
     try:
-        i = 0
-        for buf in aravis.ir_buffer_streamer():
-            i += 1
-            #if i%2 == 0:
-            timeStart = time.monotonic_ns()
-            # This will run forever, or until you break 
-            if buf:
-                img = Image.frombytes('L', (dims[0], dims[1]), bytes(buf))
-                if irFrameRequest.poll():
-                    irFrameIn.send(img)
-                    irFrameRequest.recv()
-                #print(type(img))
-                # if irFrameQueue.full():
-                #     #print("Queue Cleared")
-                #     irFrameQueue.queue.clear()
-                
-                # irFrameQueue.put(img)
-            timeEnd = time.monotonic_ns()
-            #print(timeEnd-timeStart)
-            
+        for buffer in aravis.ir_buffer_streamer():
+            # This will run forever, or until you break
+            if buffer:
+                with data_lock:
+                    ir_shared_memory.buf[:] = buffer
     except KeyboardInterrupt:
         logger.warning("Keyboard Interrupt, exiting...")
         
@@ -150,15 +132,12 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    frameRate = 30
-    cam_width = 640
-    cam_height = 480
-    irFrameQueue = queue.LifoQueue(maxsize=4096)
-    irFrameOut, irFrameIn = Pipe()
-    irRequestOut, irRequestIn = Pipe()
-    irProcess = Process(target=irFrameGen, args=(irFrameIn, irRequestOut, (cam_width, cam_height) ), daemon=True) 
+    ir_cam_width = 640
+    ir_cam_height = 480
+    shm_ir_data = shared_memory.SharedMemory(create=True, size=ir_cam_width*ir_cam_height)
+    irProcess = Process(target=irFrameGen, args=(shm_ir_data, ), daemon=True) 
     
-    cameras = cameraManager(0, irFrameOut, irRequestIn, height=cam_height, width=cam_width, camScale=int(1/args.scale))
+    cameras = cameraManager(0, shm_ir_data, height=ir_cam_height, width=ir_cam_width, camScale=int(1/args.scale))
     server = MjpegServer(cameras=cameras, port=args.port)
 
     try:
@@ -167,6 +146,8 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         logger.warning("Keyboard Interrupt, exiting...")
     finally:
+        shm_ir_data.close()
+        shm_ir_data.unlink()
         irProcess.join()
         server.stop()
         cameras.stop()

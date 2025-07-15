@@ -5,6 +5,7 @@ import numpy as np
 import logging
 import os
 import time
+from multiprocessing import Process, Pipe, Lock, Array, shared_memory
 # import signal
 
 from aiohttp import web, MultipartWriter
@@ -23,7 +24,7 @@ logger = logging.getLogger("server")
 log_level = getattr(logging, log_level)
 logger.setLevel(log_level)
 
-
+data_lock = Lock()
 
 class StreamHandler:
 
@@ -54,23 +55,25 @@ class StreamHandler:
             await response.write(b"\r\n")
 
 class Camera:
-    def __init__(self, idx, p_output, width, height, camScale:int = 1):
+    def __init__(self, idx, shm_event_data, width, height, camScale:int = 1):
         self._idx = idx
         
         self.scale = camScale
         self.width = width
         self.height = height
-        self.framepipe = p_output
+        self.eventMemory = shm_event_data
 
     @property
     def identifier(self):
         return self._idx
 
     async def get_frame(self):
-        self.frame = self.framepipe.recv()
+        
+        eventFrame = np.frombuffer(self.eventMemory.buf[:], dtype=np.uint8)
+        eventFrame = eventFrame.reshape((self.height, self.width))
         if self.scale != 1:
-            self.frame = cv2.resize(self.frame, dsize=(self.width//self.scale, self.height//self.scale), interpolation=cv2.INTER_CUBIC)
-        frameout = cv2.imencode('.jpg', np.flip(self.frame, 0))[1]
+            eventFrame = cv2.resize(eventFrame, dsize=(self.width//self.scale, self.height//self.scale), interpolation=cv2.INTER_CUBIC)
+        frameout = cv2.imencode('.jpg', np.flip(eventFrame, 0))[1]
         await asyncio.sleep(1 / 25)
         return frameout.tobytes()
     
@@ -102,49 +105,39 @@ class MjpegServer:
         '''
         pass
 
-def eventProducer(p_input):
-        configuration = nd.prophesee_evk4.Configuration(
-        biases=nd.prophesee_evk4.Biases(
-            diff_off=102,  # default: 102
-            diff_on=73,  # default: 73
-            )
-        )
-        # killer = GracefulKiller()
-        with nd.open(serial=args.serial, configuration=configuration) as device:#configuration=configuration
-            print(f"Successfully started EVK4 {args.serial}")
-
-            for status, packet in device:
-                #print(packet)
-
-                p_input.send(packet)
-                # if killer.kill_now:
-                #     break
-
-def eventAccumulator(event_out, frame_in, dims):
+def eventProducer(serial, config, dims, event_shared_memory):
     frame = np.zeros(
         (dims[1], dims[0]),
-        dtype=np.float32,
+        dtype=np.uint8,
     )+127
     oldTime = time.monotonic_ns()
-    # try:
-    while True:
-        packet = event_out.recv()
-        #print(packet)
-        frame[
-            packet["dvs_events"]["y"],
-            packet["dvs_events"]["x"],
-        ] = packet["dvs_events"]["on"]*255
-        if time.monotonic_ns()-oldTime >= (1/50)*1000000000:
-            #print(frame)
-            frame_in.send(frame)
-            frame = np.zeros(
-                (dims[1], dims[0]),
-                dtype=np.float32,
-            )+127
-            oldTime = time.monotonic_ns()
-    # except:
-    #     logger.warning("Accumulator Failed")
+    with nd.open(serial=serial, configuration=config) as device:
+        print(f"Successfully started EVK4 {args.serial}")
+
+        for status, packet in device:
+            if packet:
+                if "dvs_events" in packet:
+                    frame[
+                        packet["dvs_events"]["y"],
+                        packet["dvs_events"]["x"],
+                    ] = packet["dvs_events"]["on"]*255
+                    if time.monotonic_ns()-oldTime >= (1/50)*1000000000:
+                        with data_lock:
+                            event_shared_memory.buf[:] = frame.tobytes()
+                        frame = np.zeros(
+                            (dims[1], dims[0]),
+                            dtype=np.uint8,
+                        )+127
+                        oldTime = time.monotonic_ns()
     
+def check_event_camera(serialNumberList):
+    evkSerialList = [i.serial for i in nd.list_devices()]
+    try:
+        serialNumbers = [i for i in evkSerialList if i in serialNumberList]
+        return serialNumbers
+    except Exception as e:
+        print(f"Error during serial number check: {e}", flush=True)
+        return None
 
 if __name__ == "__main__":
     configuration = nd.prophesee_evk4.Configuration(
@@ -157,8 +150,16 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument(
         "--serial", 
-        default="00051501",
-        help="Camera serial number (for example 00050423)"
+        default="",
+        help="Camera serial number list. Will start recording data from all specified cameras if they are connected. If  (for example 00050423 00051505 00051503)",
+        nargs="+",
+        type=str
+    )
+    parser.add_argument(
+        "--scale", 
+        default="0.5",
+        type=float,
+        help="Webpage viewfinder scale"
     )
     parser.add_argument(
         "--port",
@@ -167,32 +168,40 @@ if __name__ == "__main__":
         help="Port at which server is available on"
     )
     args = parser.parse_args()
+    configuration = nd.prophesee_evk4.Configuration(
+        biases=nd.prophesee_evk4.Biases(
+            diff_off=102,  # default: 102
+            diff_on=73,    # default: 73
+        )
+    )
 
+    if args.serial == "":
+        evkSerialList = [i.serial for i in nd.list_devices()]
+    else:
+        evkSerialList = check_event_camera(args.serial)
+    
+    if evkSerialList:
+        pass
+    else:
+        print("[INFO] No Event Cameras connected to system.", flush=True)
 
-    with nd.open(serial=args.serial) as device:
+    with nd.open(serial=evkSerialList[0]) as device:
         cam_width = device.properties().width
         cam_height = device.properties().height
-                
-    event_output, event_input = Pipe()
-
-    frame_output, frame_input = Pipe()
-    #frameQueue = queue.LifoQueue()
+    shm_event_data = shared_memory.SharedMemory(create=True, size=cam_width*cam_height)
+    eventProcess = Process(target=eventProducer, args=(evkSerialList[0], configuration, (cam_width, cam_height), shm_event_data), daemon=True)
     
-    eventProcess = Process(target=eventProducer, args=(event_input, ), daemon=True)   
-
-    frameProcess = Process(target=eventAccumulator, args=(event_output, frame_input,(cam_width, cam_height) ), daemon=True) 
-    
-    cam = Camera(0, frame_output, height=cam_height, width=cam_width, camScale=1)
+    cam = Camera(0, shm_event_data, height=cam_height, width=cam_width, camScale=1)
     server = MjpegServer(cam=cam, port=args.port)
 
     try:
         eventProcess.start()
-        frameProcess.start()
         server.start()
     except KeyboardInterrupt:
         logger.warning("Keyboard Interrupt, exiting...")
     finally:
         eventProcess.join()
-        frameProcess.join()
+        shm_event_data.close()
+        shm_event_data.unlink()
         server.stop()
         cam.stop()
