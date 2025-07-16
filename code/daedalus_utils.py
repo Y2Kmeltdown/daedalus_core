@@ -9,6 +9,7 @@ import re
 import os
 import socket
 import sys
+import pickle
 
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -20,9 +21,20 @@ import numpy as np
 data_lock = Lock()
 
 class data_handler:
-    def __init__(self, sensorName:str, extension:str ,dataPath:str, backupPath:str, recordingTime:int ,socketPath:str = None, bufferInterval:int = 10):
+    def __init__(
+            self, 
+            sensorName:str, 
+            extension:str ,
+            dataPath:str, 
+            backupPath:str, 
+            recordingTime:int ,
+            pickle:bool = False,
+            socketPath:str = None,
+            bufferInterval:int = 10
+            ):
         self.sensorName = sensorName
         self._sensorExtension = extension
+        self._usepickle = pickle
 
         self._dataDirExists = False
         self._backupDirExists = False
@@ -98,8 +110,7 @@ class data_handler:
         self._backupIsMounted, self._backupDirExists = validate_directory(self.backupPath)
         if self.socketPath:
             self._socketIsMounted, self._socketDirExists = validate_directory(self.socketPath)
-            
-            
+        
     def generate_savepoints(self):
 
         def generate_directory(directory:Path, isMounted:bool, exists:bool):
@@ -184,10 +195,26 @@ class data_handler:
         else:
             print("[INFO] No Data provided at the time of writing data.")
 
+    # def pickle_append(filename, obj):
+    #     with open(filename, 'ab+') as f:
+    #         pickle.dump(obj, f)
+    #         f.flush()
+
+    # def pickle_load(filename):
+    #     with open(filename, 'rb') as f:
+    #         while True:
+    #             try:
+    #                 yield pickle.load(f)
+    #             except EOFError:
+    #                 break
+
     def _writerThread(self, data, path):
         try:
-            with open(path, "ab") as f:
-                f.write(data)
+            with open(path, "ab+") as f:
+                if self._usepickle:
+                    pickle.dump(data, f)
+                else:
+                    f.write(data)
                 f.flush()
 
         except Exception as e:

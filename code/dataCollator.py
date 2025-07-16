@@ -74,7 +74,8 @@ if __name__ == "__main__":
         extension=".jsonl",
         dataPath=args.data,
         backupPath=args.backup,
-        recordingTime=args.record_time
+        recordingTime=args.record_time,
+        pickle=True
         )
     
     socketDict = socketGenerator(daedalus)
@@ -163,8 +164,8 @@ if __name__ == "__main__":
         }
 
         #print(eventideChunk)
-        daedalusString = json.dumps(daedalusChunk).encode() + b'\n'
-        daedalusDataHandler.write_data(daedalusString)
+        #daedalusString = json.dumps(daedalusChunk).encode() + b'\n'
+        daedalusDataHandler.write_data(daedalusChunk)
 
         try:
             GPS_data = socketDict["g_p_s"][1].get(block=True, timeout=5).decode("utf-8")
