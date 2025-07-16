@@ -56,7 +56,7 @@ class eventCamera(Thread):
             metadata = {
                 "system_time": time.time(),
                 "properties": dataclasses.asdict(device.properties()),
-                "configuration": "NONE",
+                "configuration": str(self.configuration),
             }
             self.metadata_json = json.dumps(metadata, indent=4)
             events_cursor = 0
@@ -101,7 +101,7 @@ class eventCamera(Thread):
     def getMetadata(self):
         while not self.metadata_json:
             pass
-        self.metaDataHandler.write_data(self.metadata_json)
+        self.metaDataHandler.write_data(self.metadata_json, now=True)
         return self.metadata_json
     
     def getEventBuffer(self):
@@ -235,11 +235,10 @@ if __name__ == "__main__":
         print("[INFO] Starting Camera")
         camera.start()
         camMetadata = camera.getMetadata()
-        metadataList.append(camMetadata)
-        metadataList.append({"raw":raw})
+        
 
         while True:
-            time.sleep(1)
+            time.sleep(0.01)
             camera.getEventBuffer()
 
     except KeyboardInterrupt:

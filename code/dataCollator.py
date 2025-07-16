@@ -21,22 +21,22 @@ def run_display(display_string, myOLED):
     print(display_string, flush=True)
     myOLED.display()
 
-def socketGenerator():
+def socketGenerator(supervisor:daedalus_utils.supervisor):
     # Socket Handler
     socketDict = {}
-    for key, supervisorObject in eventide.moduleDict.items():
+    for key, supervisorObject in supervisor.moduleDict.items():
         sock = supervisorObject.sock
         if sock is not None:
             socketQueue = queue.Queue()
             socketFile = str(sock)
             if key == "g_p_s":# or key == "pi_picture_camera":
                 buffer = False
-                bufsize = 4096
             elif key == "pi_picture_camera":
                 buffer = False
-                bufsize = 32768
             elif key == "infra_red_camera":
                 buffer = False
+            if key == "event_based_camera":
+                buffer = True
                 bufsize = 32768
             else:
                 buffer = True
@@ -58,7 +58,7 @@ if __name__ == "__main__":
     
     parser.add_argument(
         "--data",
-        default="/home/eventide/daedalus_core/data",
+        default="/home/daedalus/daedalus_core/data",
         help="Path of the directory where recordings are stored",
     )
     parser.add_argument(
@@ -87,8 +87,8 @@ if __name__ == "__main__":
 
     # INITIAL SUPERVISOR ACCESS AND DATA HANDLER
     supervisorFile = "../config/supervisord.conf"
-    eventide = daedalus_utils.supervisor(supervisorFile)
-    eventideDataHandler = daedalus_utils.data_handler(
+    daedalus = daedalus_utils.supervisor(supervisorFile)
+    daedalusDataHandler = daedalus_utils.data_handler(
         sensorName=f"event_synced",
         extension=".jsonl",
         dataPath=args.data,
@@ -96,7 +96,7 @@ if __name__ == "__main__":
         recordingTime=args.record_time
         )
     
-    socketDict = socketGenerator()
+    socketDict = socketGenerator(daedalus)
 
     # # Initialise display
     # #tick = "✓"
@@ -134,9 +134,6 @@ if __name__ == "__main__":
     #         supervisorObject.displayed = False
 
     # RUN CODE
-
-    testSerial = "00051501"
-    eventideList = []
     GPS_data = ""
     while True:
         try:
@@ -146,6 +143,7 @@ if __name__ == "__main__":
         except queue.Empty:
             #print("[INFO] No Pictures Available")
             base64PiImage = ""
+        PiCam_Data = base64PiImage
 
         try:
             irCamData = socketDict["infra_red_camera"][1].get_nowait()
@@ -154,23 +152,25 @@ if __name__ == "__main__":
         except queue.Empty:
             #print("[INFO] No Pictures Available")
             base64IrImage = ""
+        IR_Data = base64IrImage
 
-        event_Data = socketDict["e_c_d"].getDataBuffer()
-
+        event_Data = socketDict["event_based_camera"][2].getDataBuffer()
+        if event_Data:
+            event_Data = [base64.b64encode(data).decode("utf-8") for data in event_Data]
+            
         IMU_Data = socketDict["i_m_u"][2].getDataBuffer()
         if IMU_Data:
             IMU_Data = [data.decode("utf-8") for data in IMU_Data]
+
         Atmos_Data = socketDict["atmos_temp_sensor"][2].getDataBuffer()
-        #print(Atmos_Data)
         if Atmos_Data:
             Atmos_Data = [data.decode("utf-8") for data in Atmos_Data]
-        IR_Data = base64IrImage
-        PiCam_Data = base64PiImage
+        
         Telem_Data = socketDict["cube_red_telemetry"][2].getDataBuffer()
         if Telem_Data:
             Telem_Data = [data.decode("utf-8") for data in Telem_Data]
 
-        eventideChunk = {
+        daedalusChunk = {
             "Timestamp":time.time(),
             "GPS_data": GPS_data,
             "IMU": IMU_Data,
@@ -182,8 +182,8 @@ if __name__ == "__main__":
         }
 
         #print(eventideChunk)
-        eventideString = json.dumps(eventideChunk).encode() + b'\n'
-        eventideDataHandler.write_data(eventideString)
+        daedalusString = json.dumps(daedalusChunk).encode() + b'\n'
+        daedalusDataHandler.write_data(daedalusString)
 
         try:
             GPS_data = socketDict["g_p_s"][1].get(block=True, timeout=5).decode("utf-8")
