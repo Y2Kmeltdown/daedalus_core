@@ -222,6 +222,7 @@ if __name__ == "__main__":
             configuration=configuration, 
             eventDataHandler=eventData,
             metaDataHandler=eventMetadata,
+            measureDataHandler=eventMeasurements,
             raw=raw, 
             measurementInterval=args.measurement_interval
             )
