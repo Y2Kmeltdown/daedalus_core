@@ -142,7 +142,7 @@ if __name__ == "__main__":
     
     parser.add_argument(
         "--data",
-        default="/home/eventide/daedalus_core/data",
+        default="/home/daedalus/daedalus_core/data",
         help="Path of the directory where recordings are stored",
     )
     parser.add_argument(
@@ -226,18 +226,20 @@ if __name__ == "__main__":
             raw=raw, 
             measurementInterval=args.measurement_interval
             )
-        camMetadata = camera.getMetadata()
-        eventCameraDict[serial] = camera
-        metadataList.append(camMetadata)
-        metadataList.append({"raw":raw})
+        
     else:
         print("[INFO] No Event Cameras connected to system.", flush=True)
 
+    
     try:
+        print("[INFO] Starting Camera")
         camera.start()
+        camMetadata = camera.getMetadata()
+        metadataList.append(camMetadata)
+        metadataList.append({"raw":raw})
 
         while True:
-            time.sleep(5)
+            time.sleep(1)
             camera.getEventBuffer()
 
     except KeyboardInterrupt:
