@@ -154,7 +154,7 @@ def readAtmos(i2c_address, atmosDataHandler, ctrl_meas_WORD, ctrl_hum_WORD, conf
         print(f"[ERROR] {err}")
             
 if __name__ == "__main__":
-
+    time.sleep(3) # Wait for socket server to start first
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument(
         "--i2c_address",

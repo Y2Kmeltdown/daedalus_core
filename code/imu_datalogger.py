@@ -76,6 +76,7 @@ def read_imu(i2c_address, imuDataHandler):
         print("Stopping IMU Reader.")
 
 if __name__ == '__main__':
+    time.sleep(3) # Wait for socket server to start first
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument(
         "--i2c_address",

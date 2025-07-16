@@ -49,14 +49,6 @@ def socketGenerator(supervisor:daedalus_utils.supervisor):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument(
-        "--serial", 
-        default="",
-        help="Camera serial number list. Will start recording data from all specified cameras if they are connected. If  (for example 00050423 00051505 00051503)",
-        nargs="+",
-        type=str
-    )
-    
-    parser.add_argument(
         "--data",
         default="/home/daedalus/daedalus_core/data",
         help="Path of the directory where recordings are stored",
@@ -65,18 +57,6 @@ if __name__ == "__main__":
         "--backup",
         default=str("/mnt/data"),
         help="Path of the directory where recordings are backed up",
-    )
-    parser.add_argument(
-        "--measurement-interval",
-        default=0.1,
-        type=float,
-        help="Interval between temperature and illuminance measurements in seconds",
-    )
-    parser.add_argument(
-        "--flush-interval",
-        default=0.5,
-        type=float,
-        help="Maximum interval between file flushes in seconds",
     )
     parser.add_argument(
         "--record_time",

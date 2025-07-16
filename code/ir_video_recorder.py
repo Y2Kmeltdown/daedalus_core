@@ -30,5 +30,6 @@ def irRecord(record_time:int, videoLocation:str):
     print(f"Video '{videoLocation}' created successfully!")
 
 if __name__ == "__main__":
+    time.sleep(3) # Wait for socket server to start first
     irRecord(5, "test.mp4")
     pass

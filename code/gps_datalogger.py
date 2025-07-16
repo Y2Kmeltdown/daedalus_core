@@ -1,6 +1,7 @@
 import argparse
 import sys
 import daedalus_utils
+import time
     
 def checksumValidator(packet: bytearray) -> bool:
     checksum = 0
@@ -75,6 +76,7 @@ def run(gpsTransciever:daedalus_utils.transceiver , gpsDataHandler:daedalus_util
 
 
 if __name__ == '__main__':
+    time.sleep(3) # Wait for socket server to start first
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument(
         "--port",
