@@ -133,54 +133,56 @@ class data_handler:
         return kernelTime
         
     def write_data(self, data, now:bool = False):
+        if data:
+            if isinstance(data, list):
+                if isinstance(data[0], bytes):
+                    data = b"".join(data)
+                elif isinstance(data[0], str):
+                    data = "".join(data)
+                else:
+                    raise TypeError("Data within a list must be string or bytes")
 
-        if isinstance(data, list):
-            if isinstance(data[0], bytes):
-                data = b"".join(data)
-            elif isinstance(data[0], str):
-                data = "".join(data)
-            else:
-                raise TypeError("Data within a list must be string or bytes")
 
-
-        if isinstance(data, str):
-            data = data.encode('utf-8')
-        elif not isinstance(data, bytes):
-            raise TypeError("Data must be string or bytes")
-        
-        if self._socketDirExists:
-            self.socketQueue.put(data)
-        else:
-            if not self._dataDirExists and not self._backupDirExists:
-                raise IOError("No valid locations exist to write data")
+            if isinstance(data, str):
+                data = data.encode('utf-8')
+            elif not isinstance(data, bytes):
+                raise TypeError("Data must be string or bytes")
             
-            self.buffer.append(data)
-            #print(self.buffer)
-            #print(self.buffer)
-            if datetime.now() - self.last_buffer_save >= self.buffer_save_interval and self.buffer or now == True:
-                if now:
-                    self.generate_filename()
-                print(f"[INFO] Writing buffer at {datetime.now().strftime('%H:%M:%S')}...", flush=True)
-                writeData = b"".join(self.buffer)
-
-                if self._dataDirExists:
-                    dataFile = self.dataPath / self.file_name
-                    dataWrite = Thread(target=self._writerThread, kwargs={"data":writeData, "path":dataFile}, daemon=True)
-                    dataWrite.start()
-
-                if self._backupDirExists:
-                    backupFile = self.backupPath / self.file_name
-                    backupWrite = Thread(target=self._writerThread, kwargs={"data":writeData, "path":backupFile}, daemon=True)
-                    backupWrite.start()
-
-                self.buffer.clear()  # Clear buffer after writing
-                self.last_buffer_save = datetime.now()
-
-                if self._dataDirExists:
-                    dataWrite.join()
+            if self._socketDirExists:
+                self.socketQueue.put(data)
+            else:
+                if not self._dataDirExists and not self._backupDirExists:
+                    raise IOError("No valid locations exist to write data")
                 
-                if self._backupDirExists:
-                    backupWrite.join()
+                self.buffer.append(data)
+                #print(self.buffer)
+                #print(self.buffer)
+                if datetime.now() - self.last_buffer_save >= self.buffer_save_interval and self.buffer or now == True:
+                    if now:
+                        self.generate_filename()
+                    print(f"[INFO] Writing buffer at {datetime.now().strftime('%H:%M:%S')}...", flush=True)
+                    writeData = b"".join(self.buffer)
+
+                    if self._dataDirExists:
+                        dataFile = self.dataPath / self.file_name
+                        dataWrite = Thread(target=self._writerThread, kwargs={"data":writeData, "path":dataFile}, daemon=True)
+                        dataWrite.start()
+
+                    if self._backupDirExists:
+                        backupFile = self.backupPath / self.file_name
+                        backupWrite = Thread(target=self._writerThread, kwargs={"data":writeData, "path":backupFile}, daemon=True)
+                        backupWrite.start()
+
+                    self.buffer.clear()  # Clear buffer after writing
+                    self.last_buffer_save = datetime.now()
+
+                    if self._dataDirExists:
+                        dataWrite.join()
+                    
+                    if self._backupDirExists:
+                        backupWrite.join()
+        else:
+            print("[INFO] No Data provided at the time of writing data.")
 
     def _writerThread(self, data, path):
         try:

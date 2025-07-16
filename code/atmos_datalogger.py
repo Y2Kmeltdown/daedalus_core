@@ -182,6 +182,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--record_time",
         default=300,
+        type=int,
         help="Time in seconds for how long to record to a single file"
     )
     args = parser.parse_args()
