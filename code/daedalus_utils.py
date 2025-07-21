@@ -9,6 +9,7 @@ import re
 import os
 import socket
 import sys
+import pickle
 
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -20,9 +21,20 @@ import numpy as np
 data_lock = Lock()
 
 class data_handler:
-    def __init__(self, sensorName:str, extension:str ,dataPath:str, backupPath:str, recordingTime:int ,socketPath:str = None, bufferInterval:int = 10):
+    def __init__(
+            self, 
+            sensorName:str, 
+            extension:str ,
+            dataPath:str, 
+            backupPath:str, 
+            recordingTime:int ,
+            pickle:bool = False,
+            socketPath:str = None,
+            bufferInterval:int = 10
+            ):
         self.sensorName = sensorName
         self._sensorExtension = extension
+        self._usepickle = pickle
 
         self._dataDirExists = False
         self._backupDirExists = False
@@ -98,8 +110,7 @@ class data_handler:
         self._backupIsMounted, self._backupDirExists = validate_directory(self.backupPath)
         if self.socketPath:
             self._socketIsMounted, self._socketDirExists = validate_directory(self.socketPath)
-            
-            
+        
     def generate_savepoints(self):
 
         def generate_directory(directory:Path, isMounted:bool, exists:bool):
@@ -133,59 +144,77 @@ class data_handler:
         return kernelTime
         
     def write_data(self, data, now:bool = False):
+        if data:
+            if isinstance(data, list):
+                if isinstance(data[0], bytes):
+                    data = b"".join(data)
+                elif isinstance(data[0], str):
+                    data = "".join(data)
+                else:
+                    raise TypeError("Data within a list must be string or bytes")
 
-        if isinstance(data, list):
-            if isinstance(data[0], bytes):
-                data = b"".join(data)
-            elif isinstance(data[0], str):
-                data = "".join(data)
-            else:
-                raise TypeError("Data within a list must be string or bytes")
 
-
-        if isinstance(data, str):
-            data = data.encode('utf-8')
-        elif not isinstance(data, bytes):
-            raise TypeError("Data must be string or bytes")
-        
-        if self._socketDirExists:
-            self.socketQueue.put(data)
-        else:
-            if not self._dataDirExists and not self._backupDirExists:
-                raise IOError("No valid locations exist to write data")
+            if isinstance(data, str):
+                data = data.encode('utf-8')
+            elif not isinstance(data, bytes):
+                raise TypeError("Data must be string or bytes")
             
-            self.buffer.append(data)
-            #print(self.buffer)
-            #print(self.buffer)
-            if datetime.now() - self.last_buffer_save >= self.buffer_save_interval and self.buffer or now == True:
-                if now:
-                    self.generate_filename()
-                print(f"[INFO] Writing buffer at {datetime.now().strftime('%H:%M:%S')}...", flush=True)
-                writeData = b"".join(self.buffer)
-
-                if self._dataDirExists:
-                    dataFile = self.dataPath / self.file_name
-                    dataWrite = Thread(target=self._writerThread, kwargs={"data":writeData, "path":dataFile}, daemon=True)
-                    dataWrite.start()
-
-                if self._backupDirExists:
-                    backupFile = self.backupPath / self.file_name
-                    backupWrite = Thread(target=self._writerThread, kwargs={"data":writeData, "path":backupFile}, daemon=True)
-                    backupWrite.start()
-
-                self.buffer.clear()  # Clear buffer after writing
-                self.last_buffer_save = datetime.now()
-
-                if self._dataDirExists:
-                    dataWrite.join()
+            if self._socketDirExists:
+                self.socketQueue.put(data)
+            else:
+                if not self._dataDirExists and not self._backupDirExists:
+                    raise IOError("No valid locations exist to write data")
                 
-                if self._backupDirExists:
-                    backupWrite.join()
+                self.buffer.append(data)
+                #print(self.buffer)
+                #print(self.buffer)
+                if datetime.now() - self.last_buffer_save >= self.buffer_save_interval and self.buffer or now == True:
+                    if now:
+                        self.generate_filename()
+                    print(f"[INFO] Writing buffer at {datetime.now().strftime('%H:%M:%S')}...", flush=True)
+                    writeData = b"".join(self.buffer)
+
+                    if self._dataDirExists:
+                        dataFile = self.dataPath / self.file_name
+                        dataWrite = Thread(target=self._writerThread, kwargs={"data":writeData, "path":dataFile}, daemon=True)
+                        dataWrite.start()
+
+                    if self._backupDirExists:
+                        backupFile = self.backupPath / self.file_name
+                        backupWrite = Thread(target=self._writerThread, kwargs={"data":writeData, "path":backupFile}, daemon=True)
+                        backupWrite.start()
+
+                    self.buffer.clear()  # Clear buffer after writing
+                    self.last_buffer_save = datetime.now()
+
+                    if self._dataDirExists:
+                        dataWrite.join()
+                    
+                    if self._backupDirExists:
+                        backupWrite.join()
+        else:
+            print("[INFO] No Data provided at the time of writing data.")
+
+    # def pickle_append(filename, obj):
+    #     with open(filename, 'ab+') as f:
+    #         pickle.dump(obj, f)
+    #         f.flush()
+
+    # def pickle_load(filename):
+    #     with open(filename, 'rb') as f:
+    #         while True:
+    #             try:
+    #                 yield pickle.load(f)
+    #             except EOFError:
+    #                 break
 
     def _writerThread(self, data, path):
         try:
-            with open(path, "ab") as f:
-                f.write(data)
+            with open(path, "ab+") as f:
+                if self._usepickle:
+                    pickle.dump(data, f)
+                else:
+                    f.write(data)
                 f.flush()
 
         except Exception as e:

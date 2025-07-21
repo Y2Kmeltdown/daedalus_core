@@ -71,7 +71,7 @@ def cameraHandler(camID, piCamDataHandler:daedalus_utils.data_handler, config):
         time.sleep(args.timer)
 
 if __name__ == "__main__":
-
+    time.sleep(3) # Wait for socket server to start first
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument(
         "--camera", 

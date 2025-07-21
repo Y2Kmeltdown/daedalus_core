@@ -75,6 +75,7 @@ def ir_frame_logger(data_handler, timer: float):
         time.sleep(timer)
 
 if __name__ == "__main__":
+    time.sleep(3) # Wait for socket server to start first
     configure_interface()
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter

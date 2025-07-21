@@ -3,6 +3,7 @@ import serial
 import daedalus_utils
 import argparse
 import sys
+import time
 
 # Replace with your serial port and baud rate
 
@@ -16,7 +17,7 @@ def run(port:str, baud:int, datahandler:daedalus_utils.data_handler):
             datahandler.write_data(str(msg)+"\n")
 
 if __name__ == "__main__":
-
+    time.sleep(3) # Wait for socket server to start first
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument(
         "--port",
@@ -43,6 +44,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--record_time",
         default=300,
+        type=int,
         help="Time in seconds for how long to record to a single file"
     )
     args = parser.parse_args()

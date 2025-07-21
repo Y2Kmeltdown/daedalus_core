@@ -56,7 +56,7 @@ class eventCamera(Thread):
             metadata = {
                 "system_time": time.time(),
                 "properties": dataclasses.asdict(device.properties()),
-                "configuration": "NONE",
+                "configuration": str(self.configuration),
             }
             self.metadata_json = json.dumps(metadata, indent=4)
             events_cursor = 0
@@ -101,7 +101,7 @@ class eventCamera(Thread):
     def getMetadata(self):
         while not self.metadata_json:
             pass
-        self.metaDataHandler.write_data(self.metadata_json)
+        self.metaDataHandler.write_data(self.metadata_json, now=True)
         return self.metadata_json
     
     def getEventBuffer(self):
@@ -131,6 +131,7 @@ def check_event_camera(serialNumberList):
     
 
 if __name__ == "__main__":
+    time.sleep(3) # Wait for socket server to start first
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument(
         "--serial", 
@@ -142,7 +143,7 @@ if __name__ == "__main__":
     
     parser.add_argument(
         "--data",
-        default="/home/eventide/daedalus_core/data",
+        default="/home/daedalus/daedalus_core/data",
         help="Path of the directory where recordings are stored",
     )
     parser.add_argument(
@@ -170,6 +171,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--record_time",
         default=300,
+        type=int,
         help="Time in seconds for how long to record to a single file"
     )
     args = parser.parse_args()
@@ -226,18 +228,19 @@ if __name__ == "__main__":
             raw=raw, 
             measurementInterval=args.measurement_interval
             )
-        camMetadata = camera.getMetadata()
-        eventCameraDict[serial] = camera
-        metadataList.append(camMetadata)
-        metadataList.append({"raw":raw})
+        
     else:
         print("[INFO] No Event Cameras connected to system.", flush=True)
 
+    
     try:
+        print("[INFO] Starting Camera")
         camera.start()
+        camMetadata = camera.getMetadata()
+        
 
         while True:
-            time.sleep(5)
+            time.sleep(0.01)
             camera.getEventBuffer()
 
     except KeyboardInterrupt:
