@@ -68,7 +68,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # INITIAL SUPERVISOR ACCESS AND DATA HANDLER
-    supervisorFile = "config/supervisord.conf"
+    supervisorFile = "../config/supervisord.conf"
     daedalus = daedalus_utils.supervisor(supervisorFile)
     daedalusDataHandler = daedalus_utils.data_handler(
         sensorName=f"event_synced",
