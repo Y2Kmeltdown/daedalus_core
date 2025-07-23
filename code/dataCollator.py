@@ -3,9 +3,10 @@ import daedalus_utils
 import argparse
 import queue
 import base64
-import json
 import time
 import sys
+import numpy as np
+import json
 
 def run_display(display_string, myOLED):
 
@@ -67,11 +68,11 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # INITIAL SUPERVISOR ACCESS AND DATA HANDLER
-    supervisorFile = "../config/supervisord.conf"
+    supervisorFile = "config/supervisord.conf"
     daedalus = daedalus_utils.supervisor(supervisorFile)
     daedalusDataHandler = daedalus_utils.data_handler(
         sensorName=f"event_synced",
-        extension=".jsonl",
+        extension=".pickle",
         dataPath=args.data,
         backupPath=args.backup,
         recordingTime=args.record_time,
@@ -118,27 +119,25 @@ if __name__ == "__main__":
     # RUN CODE
     GPS_data = ""
     while True:
+        prev_GPS_data = GPS_data
+
         try:
             piPicData = socketDict["pi_picture_camera"][1].get_nowait()
-            base64PiImage = base64.b64encode(piPicData).decode("utf-8")
             print("[INFO] Pi Picture added to json data", flush=True)
         except queue.Empty:
             #print("[INFO] No Pictures Available")
-            base64PiImage = ""
-        PiCam_Data = base64PiImage
+            piPicData = None
+        PiCam_Data = piPicData
 
         try:
             irCamData = socketDict["infra_red_camera"][1].get_nowait()
-            base64IrImage = base64.b64encode(irCamData).decode("utf-8")
             print("[INFO] IR Picture added to json data", flush=True)
         except queue.Empty:
             #print("[INFO] No Pictures Available")
-            base64IrImage = ""
-        IR_Data = base64IrImage
+            irCamData = None
+        IR_Data = irCamData
 
         event_Data = socketDict["event_based_camera"][2].getDataBuffer()
-        if event_Data:
-            event_Data = [base64.b64encode(data).decode("utf-8") for data in event_Data]
             
         IMU_Data = socketDict["i_m_u"][2].getDataBuffer()
         if IMU_Data:
@@ -152,9 +151,15 @@ if __name__ == "__main__":
         if Telem_Data:
             Telem_Data = [data.decode("utf-8") for data in Telem_Data]
 
+        try:
+            GPS_data = socketDict["g_p_s"][1].get(block=True, timeout=5).decode("utf-8")
+        except queue.Empty:
+            GPS_data = ""
+            print("[INFO] No GPS packets available", flush=True)
+
         daedalusChunk = {
             "Timestamp":time.time(),
-            "GPS_data": GPS_data,
+            "GPS_data": prev_GPS_data,
             "IMU": IMU_Data,
             "Telem_Data": Telem_Data,
             "Atmos": Atmos_Data,
@@ -163,12 +168,7 @@ if __name__ == "__main__":
             "IR_data": IR_Data,
         }
 
-        #print(eventideChunk)
         #daedalusString = json.dumps(daedalusChunk).encode() + b'\n'
         daedalusDataHandler.write_data(daedalusChunk)
 
-        try:
-            GPS_data = socketDict["g_p_s"][1].get(block=True, timeout=5).decode("utf-8")
-        except queue.Empty:
-            GPS_data = ""
-            print("[INFO] No GPS packets available", flush=True)
+    

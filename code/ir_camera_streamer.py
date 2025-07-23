@@ -1,19 +1,14 @@
 import argparse
-import io
-import queue
-from threading import Condition
-from multiprocessing import Process, Pipe, Lock, Array, shared_memory
-from threading import Thread
+from multiprocessing import Process, Lock, shared_memory
 import logging
 import os
-import time
 
 import cv2
 import numpy as np
 from aiohttp import web, MultipartWriter
-from PIL import Image
 
 import aravis
+import daedalus_utils
 
 data_lock = Lock()
 
@@ -134,6 +129,9 @@ if __name__ == "__main__":
 
     ir_cam_width = 640
     ir_cam_height = 480
+    IP_ADDR = "169.254.100.1/16"
+    IFACE = "eth0"
+    daedalus_utils.configure_interface(addr=IP_ADDR, iface=IFACE)
     shm_ir_data = shared_memory.SharedMemory(create=True, size=ir_cam_width*ir_cam_height)
     irProcess = Process(target=irFrameGen, args=(shm_ir_data, ), daemon=True) 
     

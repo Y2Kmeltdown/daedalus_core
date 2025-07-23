@@ -67,7 +67,7 @@ class eventCamera(Thread):
                 if self.raw == False:
                     events = packet["dvs_events"].tolist()
                 else:
-                    events = base64.b64encode(packet).decode("utf-8")
+                    events = packet
 
                 with data_lock:
                     self.eventList.append(events)
@@ -116,7 +116,7 @@ class eventCamera(Thread):
                 "measurements": measurements,
                 "samples": samples
             }
-            self.measureDataHandler.write_data(json.dumps(measurementData,indent=None))
+            self.measureDataHandler.write_data(json.dumps(measurementData,indent=None)+"\n")
             self.eventDataHandler.write_data(events)
         return events
     
@@ -182,8 +182,8 @@ if __name__ == "__main__":
 
     configuration = nd.prophesee_evk4.Configuration(
         biases=nd.prophesee_evk4.Biases(
-            diff_off=140,  # default: 102
-            diff_on=80,    # default: 73
+            diff_off=80,  # default: 102
+            diff_on=140,    # default: 73
         )
     )
 

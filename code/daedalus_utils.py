@@ -20,6 +20,31 @@ import numpy as np
 
 data_lock = Lock()
 
+IP_ADDR   = "169.254.100.1/16"
+IFACE     = "eth0"
+def configure_interface(addr: str = IP_ADDR, iface: str = IFACE) -> None:
+    """Add a link-local address and bring the interface up if needed."""
+    # 1. Need CAP_NET_ADMIN privileges → easiest path: run script with sudo
+    if os.geteuid() != 0:
+        sys.exit("[ERROR] Please run this script with sudo (needs NET_ADMIN)")
+
+    # 2. Is the address already assigned?
+    has_ip = subprocess.run(
+        ["ip", "-4", "-o", "addr", "show", "dev", iface],
+        capture_output=True, text=True, check=False
+    )
+    if addr.split("/")[0] in has_ip.stdout:
+        print(f"[INFO] {iface} already has {addr}")
+    else:
+        print(f"[INFO] Adding {addr} to {iface}")
+        subprocess.run(
+            ["ip", "addr", "add", addr, "dev", iface],
+            check=True
+        )
+
+    # 3. Make sure the link is up
+    subprocess.run(["ip", "link", "set", "dev", iface, "up"], check=True)
+
 class data_handler:
     def __init__(
             self, 
@@ -145,16 +170,20 @@ class data_handler:
         
     def write_data(self, data, now:bool = False):
         if data:
-            if isinstance(data, list):
+            if self._usepickle:
+                pass
+            elif isinstance(data, list):
                 if isinstance(data[0], bytes):
                     data = b"".join(data)
                 elif isinstance(data[0], str):
                     data = "".join(data)
                 else:
                     raise TypeError("Data within a list must be string or bytes")
+            
 
-
-            if isinstance(data, str):
+            if self._usepickle:
+                pass
+            elif isinstance(data, str):
                 data = data.encode('utf-8')
             elif not isinstance(data, bytes):
                 raise TypeError("Data must be string or bytes")
@@ -172,7 +201,10 @@ class data_handler:
                     if now:
                         self.generate_filename()
                     print(f"[INFO] Writing buffer at {datetime.now().strftime('%H:%M:%S')}...", flush=True)
-                    writeData = b"".join(self.buffer)
+                    if self._usepickle:
+                        writeData = self.buffer
+                    else:
+                        writeData = b"".join(self.buffer)
 
                     if self._dataDirExists:
                         dataFile = self.dataPath / self.file_name

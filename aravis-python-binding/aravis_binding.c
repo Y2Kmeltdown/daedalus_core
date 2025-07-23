@@ -366,12 +366,19 @@ static int ir_buffer_streamType_init(void) {
 
 // Single factory function to create either finite or infinite generator
 static PyObject* ir_buffer_streamer(PyObject* self, PyObject* args, PyObject* kwargs) {
+    //double framerate = 60;
     int start = 0;
     int step = 1;
     int record_time = -1;  // -1 indicates infinite (no max provided)
-    
+
+    // static char *kwlist[] = {"framerate", NULL};
+    // if (!PyArg_ParseTupleAndKeywords(args, kwargs, "d", kwlist, &framerate)) {
+    //     return NULL; // An error occurred, exception already set
+    // }
+
     // Aravis Camera Parameters
     GError *error = NULL;
+    //gboolean frameset = 1;
     
     // Create the generator object
     ir_buffer_stream *gen = PyObject_New(ir_buffer_stream, &ir_buffer_streamType);
@@ -385,7 +392,19 @@ static PyObject* ir_buffer_streamer(PyObject* self, PyObject* args, PyObject* kw
         gen->stream = NULL;
         //ArvStream *stream = NULL;
         printf ("Found camera '%s'\n", arv_camera_get_model_name (gen->camera, NULL));
+        
+        // arv_camera_set_frame_rate (gen->camera, framerate, &error);
+        // if (error == NULL) {
+        //     getFrameRate = arv_camera_get_frame_rate(gen->camera, &error);
+        //     printf("Camera Frame Rate %f\n", getFrameRate);
+        // }
+        // else {
+        //     printf("Error Setting Framerate\n");
+        // }
+        
         arv_camera_set_acquisition_mode (gen->camera, ARV_ACQUISITION_MODE_CONTINUOUS, &error);
+        
+        //arv_camera_set_frame_rate (gen->camera, framerate, &error);
         if (error == NULL)
             gen->stream = arv_camera_create_stream (gen->camera, NULL, NULL, &error);
         if (ARV_IS_STREAM (gen->stream)) {

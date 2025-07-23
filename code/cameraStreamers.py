@@ -1,18 +1,17 @@
 import argparse
 import io
-from threading import Condition, Thread
-from multiprocessing import Process, Pipe, Lock, Array, shared_memory
+from threading import Condition
+from multiprocessing import Process, Lock, shared_memory
 import logging
 import os
 import time
-import queue
 
-from PIL import Image
 import cv2
 import numpy as np
 from aiohttp import web, MultipartWriter
 import neuromorphic_drivers as nd
 import aravis
+import daedalus_utils
 
 from picamera2 import Picamera2
 from picamera2.encoders import JpegEncoder
@@ -117,11 +116,16 @@ class cameraManager:
         pi_height = self.piCameraShape[0]
         pi_width = self.piCameraShape[1]
         pi_scale = self.piCameraShape[2]
-        with output.condition:
-            output.condition.wait()
-            convBytes = output.frame
-            convFrame = cv2.imdecode(np.frombuffer(convBytes,np.uint8), cv2.IMREAD_COLOR)
-        if pi_scale != 1:
+        try:
+            with piProcess.condition:
+                test = piProcess.condition.wait(timeout=5)
+                print(test)
+                convBytes = piProcess.frame
+                convFrame = cv2.imdecode(np.frombuffer(convBytes,np.uint8), cv2.IMREAD_COLOR)
+            if pi_scale != 1:
+                convFrame = cv2.resize(convFrame, dsize=(pi_width//pi_scale, pi_height//pi_scale), interpolation=cv2.INTER_CUBIC)
+        except:
+            convFrame = np.zeros((pi_height, pi_width, 3))
             convFrame = cv2.resize(convFrame, dsize=(pi_width//pi_scale, pi_height//pi_scale), interpolation=cv2.INTER_CUBIC)
             
         
@@ -241,24 +245,39 @@ if __name__ == "__main__":
 
     pi_cam_width = 1280
     pi_cam_height = 960
-    picam2 = Picamera2(int(args.picam))
-    picam2.configure(picam2.create_video_configuration(main={"size": (pi_cam_width, pi_cam_height)}))
-    output = StreamingOutput()
-    picam2.start_recording(JpegEncoder(), FileOutput(output))
-    piCamShape = (pi_cam_height, pi_cam_width, 2)
+    try:
+        picam2 = Picamera2(int(args.picam))
+        picam2.configure(picam2.create_video_configuration(main={"size": (pi_cam_width, pi_cam_height)}))
+        piProcess = StreamingOutput()
+        picam2.start_recording(JpegEncoder(), FileOutput(piProcess))
+        piCamShape = (pi_cam_height, pi_cam_width, 2)
+    except:
+        piCamShape = (pi_cam_height, pi_cam_width, 2)
 
-    with nd.open(serial=evkSerialList[0]) as device:
-        event_cam_width = device.properties().width
-        event_cam_height = device.properties().height
-    shm_event_data = shared_memory.SharedMemory(create=True, size=event_cam_width*event_cam_height)
-    eventProcess = Process(target=eventProducer, args=(evkSerialList[0], configuration, (event_cam_width, event_cam_height), shm_event_data), daemon=True)
-    eventCamShape = (event_cam_height, event_cam_width, 2)
+
+    event_cam_width = 1280
+    event_cam_height = 720
+    try:
+        with nd.open(serial=evkSerialList[0]) as device:
+            event_cam_width = device.properties().width
+            event_cam_height = device.properties().height
+        shm_event_data = shared_memory.SharedMemory(create=True, size=event_cam_width*event_cam_height)
+        eventProcess = Process(target=eventProducer, args=(evkSerialList[0], configuration, (event_cam_width, event_cam_height), shm_event_data), daemon=True)
+        eventCamShape = (event_cam_height, event_cam_width, 2)
+    except:
+        shm_event_data = shared_memory.SharedMemory(create=True, size=event_cam_width*event_cam_height)
+        eventCamShape = (event_cam_height, event_cam_width, 2)
 
     ir_cam_width = 640
     ir_cam_height = 480
-    shm_ir_data = shared_memory.SharedMemory(create=True, size=ir_cam_width*ir_cam_height)
-    irProcess = Process(target=irFrameGen, args=(shm_ir_data, ), daemon=True) 
-    irCamShape = (ir_cam_height, ir_cam_width, 1)
+    try:
+        daedalus_utils.configure_interface()
+        shm_ir_data = shared_memory.SharedMemory(create=True, size=ir_cam_width*ir_cam_height)
+        irProcess = Process(target=irFrameGen, args=(shm_ir_data, ), daemon=True) 
+        irCamShape = (ir_cam_height, ir_cam_width, 1)
+    except:
+        shm_ir_data = shared_memory.SharedMemory(create=True, size=ir_cam_width*ir_cam_height)
+        irCamShape = (ir_cam_height, ir_cam_width, 1)
   
     cameras = cameraManager(
         idx=0, 

@@ -3,10 +3,40 @@ from PIL import Image
 from queue import LifoQueue
 import time
 from threading import Thread
+import subprocess
+import sys
+import os
 
 width = 640
 height = 480
 testQueue = LifoQueue(maxsize=100)
+
+IP_ADDR   = "169.254.100.1/16"
+IFACE     = "eth0"
+
+def configure_interface(addr: str = IP_ADDR, iface: str = IFACE) -> None:
+    """Add a link-local address and bring the interface up if needed."""
+    # 1. Need CAP_NET_ADMIN privileges → easiest path: run script with sudo
+    if os.geteuid() != 0:
+        sys.exit("[ERROR] Please run this script with sudo (needs NET_ADMIN)")
+
+    # 2. Is the address already assigned?
+    has_ip = subprocess.run(
+        ["ip", "-4", "-o", "addr", "show", "dev", iface],
+        capture_output=True, text=True, check=False
+    )
+    if addr.split("/")[0] in has_ip.stdout:
+        print(f"[INFO] {iface} already has {addr}")
+    else:
+        print(f"[INFO] Adding {addr} to {iface}")
+        subprocess.run(
+            ["ip", "addr", "add", addr, "dev", iface],
+            check=True
+        )
+
+    # 3. Make sure the link is up
+    subprocess.run(["ip", "link", "set", "dev", iface, "up"], check=True)
+
 
 def queueRetriever(testQueue:LifoQueue):
     try:
@@ -16,6 +46,7 @@ def queueRetriever(testQueue:LifoQueue):
         pass
 
 try:
+    configure_interface(addr=IP_ADDR, iface=IFACE)
     # buffer = aravis.get_camera_buffer()
     # print(buffer)
     # img = Image.frombytes('L', (width, height), bytes(buffer))
