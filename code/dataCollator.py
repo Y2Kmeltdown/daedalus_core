@@ -120,6 +120,7 @@ if __name__ == "__main__":
     GPS_data = ""
     while True:
         prev_GPS_data = GPS_data
+        packet_time = time.time()
 
         try:
             piPicData = socketDict["pi_picture_camera"][1].get_nowait()
@@ -158,7 +159,7 @@ if __name__ == "__main__":
             print("[INFO] No GPS packets available", flush=True)
 
         daedalusChunk = {
-            "Timestamp":time.time(),
+            "Timestamp":packet_time,
             "GPS_data": prev_GPS_data,
             "IMU": IMU_Data,
             "Telem_Data": Telem_Data,
