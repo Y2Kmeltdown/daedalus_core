@@ -1,20 +1,14 @@
 import argparse
 import dataclasses
-import datetime
-import pathlib
 import json
 import time
 import sys
 from threading import Thread, Lock
 import os
-import socket
-import queue
-import base64
 import logging
 
 import daedalus_utils
 import neuromorphic_drivers as nd
-import numpy
 
 logging.basicConfig()
 log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
@@ -136,7 +130,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--serial", 
         default="",
-        help="Camera serial number list. Will start recording data from all specified cameras if they are connected. If  (for example 00050423 00051505 00051503)",
+        help="Camera serial number list. Will start recording data from all specified cameras if they are connected (for example 00050423 00051505 00051503).\nIf none are specified the first available camera will be used.",
         nargs="+",
         type=str
     )
@@ -174,6 +168,18 @@ if __name__ == "__main__":
         type=int,
         help="Time in seconds for how long to record to a single file"
     )
+    parser.add_argument(
+        "--diff_on",
+        default=140,
+        type=int,
+        help="Event Camera On Bias"
+    )
+    parser.add_argument(
+        "--diff_off",
+        default=80,
+        type=int,
+        help="Event Camera Off Bias"
+    )
     args = parser.parse_args()
 
     # INITIALISE EVENT CAMERAS
@@ -182,8 +188,8 @@ if __name__ == "__main__":
 
     configuration = nd.prophesee_evk4.Configuration(
         biases=nd.prophesee_evk4.Biases(
-            diff_off=80,  # default: 102
-            diff_on=140,    # default: 73
+            diff_off=args.diff_off,  # default: 102
+            diff_on=args.diff_on,    # default: 73
         )
     )
 
@@ -228,7 +234,6 @@ if __name__ == "__main__":
             raw=raw, 
             measurementInterval=args.measurement_interval
             )
-        
     else:
         print("[INFO] No Event Cameras connected to system.", flush=True)
 

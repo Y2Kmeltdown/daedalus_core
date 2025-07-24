@@ -6,6 +6,8 @@ import logging
 import os
 from threading import Lock, Thread
 
+import serial
+from pymavlink import mavutil
 import qwiic_oled_display
 import daedalus_utils
 
@@ -83,10 +85,28 @@ def _oled_display(supervisor:daedalus_utils.supervisor):
         for supervisorObject in supervisor.moduleDict.values():
             supervisorObject.displayed = False
 
-def _mavlink_comms():
-    pass
-        
-def _data_grouper(socketDictionary:dict, datahandler:daedalus_utils.data_handler):
+def _mavlink_comms(port:str, baud:int):
+    ser = serial.Serial(port, baud)
+    master = mavutil.mavlink_connection(ser.name)
+    while True:
+        msg = master.recv_match(blocking=True)
+        if msg:
+            pass
+    # Listening Thread
+
+    # Mavlink Functions
+    #   Get supervisor status
+    #   Start Transmitting Packets
+    #   Stop Transmitting Packets
+    #   Send one set of images
+    #   Start Streaming Event Rate
+    #   Stop Streaming Event Rate
+    #   
+
+    # Data Streaming Thread
+
+#TODO change socket dictionary to a class with properties
+def _data_grouper(socketDictionary:dict, datahandler:daedalus_utils.data_handler, gpstimeout:float):
 
     # RUN CODE
     GPS_data = ""
@@ -113,7 +133,7 @@ def _data_grouper(socketDictionary:dict, datahandler:daedalus_utils.data_handler
             Telem_Data = [data.decode("utf-8") for data in Telem_Data]
 
         try:
-            GPS_data = socketDictionary["g_p_s"][1].get(block=True, timeout=5).decode("utf-8")
+            GPS_data = socketDictionary["g_p_s"][1].get(block=True, timeout=gpstimeout).decode("utf-8")
         except queue.Empty:
             GPS_data = ""
             print("[INFO] No GPS packets available", flush=True)
@@ -148,7 +168,28 @@ if __name__ == "__main__":
         type=int,
         help="Time in seconds for how long to record to a single file"
     )
+    parser.add_argument(
+        "--gpstimeout",
+        default=2,
+        type=float,
+        help="Time in seconds before event synchronizer waits for GPS until creating next packet"
+    )
+    parser.add_argument(
+        "--port",
+        default="/dev/ttyUSB0",
+        help="Serial Port for mavlink connection", 
+        type=str)
+    parser.add_argument(
+        "--baud",
+        default=115200,
+        help="Serial Baud Rate for mavlink connection", 
+        type=int)
     args = parser.parse_args()
+
+    baud = args.baud
+    port = args.port
+
+    gpstimeout = args.gpstimeout
 
     # INITIAL SUPERVISOR ACCESS AND DATA HANDLER
     try:
@@ -170,13 +211,16 @@ if __name__ == "__main__":
     socketDict = socketGenerator(daedalus)
 
     oledThread = Thread(target=_oled_display, args = (daedalus, ), daemon=True)
-    groupThread = Thread(target=_data_grouper, args = (socketDict, daedalusDataHandler), daemon=True)
+    groupThread = Thread(target=_data_grouper, args = (socketDict, daedalusDataHandler, gpstimeout), daemon=True)
+    mavlinkThread = Thread(target=_mavlink_comms, args = (baud, port), daemon=True)
 
     try:
         oledThread.start()
         groupThread.start()
+        mavlinkThread.start()
     except KeyboardInterrupt:
         logger.warning("Keyboard Interrupt, exiting...")
     finally:
         oledThread.join()
         groupThread.join()
+        mavlinkThread.join()
