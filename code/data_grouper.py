@@ -127,20 +127,8 @@ if __name__ == "__main__":
         prev_GPS_data = GPS_data
         packet_time = time.time()
 
-        # try:
-        #     piPicData = socketDict["pi_picture_camera"][1].get_nowait()
-        #     print("[INFO] Pi Picture added to json data", flush=True)
-        # except queue.Empty:
-        #     #print("[INFO] No Pictures Available")
-        #     piPicData = None
         PiCam_Data = socketDict["pi_picture_camera"][2].getDataBuffer()
 
-        # try:
-        #     irCamData = socketDict["infra_red_camera"][1].get_nowait()
-        #     print("[INFO] IR Picture added to json data", flush=True)
-        # except queue.Empty:
-        #     #print("[INFO] No Pictures Available")
-        #     irCamData = None
         IR_Data = socketDict["infra_red_camera"][2].getDataBuffer()
 
         event_Data = socketDict["event_based_camera"][2].getDataBuffer()
