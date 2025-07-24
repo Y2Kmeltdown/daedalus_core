@@ -3,13 +3,20 @@ import pickle
 def loadDaedalusPickle(filename:str):
     data = []
     with open(filename, 'rb') as fr:
+        i = 0
+        e = 0
         try:
             while True:
-                test = pickle.load(fr)
-                data.append(test)
+                try:
+                    test = pickle.load(fr)
+                    data.append(test)
+                except pickle.UnpicklingError as err:
+                    e+=1
+                    print(f"[ERROR] Pickle caught in zipper! Object {i} might be corrupt or incomplete.")
+                i+=1
         except EOFError:
-            pass
-        except pickle.UnpicklingError:
+            i-=1
+            print(f"[INFO] All {i} pickles are unzipped. {e} {"Pickles" if e<1 else "Pickle"} {"Weren't" if e<1 else "Wasn't"} preserved.")
             pass
     return data
 
