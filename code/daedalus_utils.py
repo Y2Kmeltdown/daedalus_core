@@ -55,7 +55,8 @@ class data_handler:
             recordingTime:int ,
             pickle:bool = False,
             socketPath:str = None,
-            bufferInterval:int = 10
+            bufferInterval:int = 10,
+            socket_check_time:int = 30
             ):
         self.sensorName = sensorName
         self._sensorExtension = extension
@@ -81,23 +82,23 @@ class data_handler:
         else:
             self.socketPath = None
         
-
-        
         self.last_save_time = datetime.now()
         self.last_buffer_save = datetime.now()
+        self.socketWriteAnnoucement = datetime.now()
+        self.last_socket_check = datetime.now()
         self.buffer_save_interval = timedelta(seconds=bufferInterval)
         self.buffer = []
         self.generate_savepoints()
         self.generate_filename()
         self.record_time = recordingTime
+        self.socket_check_time = socket_check_time
+        socketCheckThread = Thread(target=self._check_socket, daemon=True)
+        socketCheckThread.start()
         if self.record_time > 0:
             print(f"[INFO] {sensorName} Filename Generator Thread Starting", flush=True)
             fileNameThread = Thread(target=self._savepoint_thread, daemon=True)
             fileNameThread.start()
         
-        
-
-
     def validate_savepoints(self):
 
         def validate_directory(directory:Path) -> tuple[bool, bool]:
@@ -157,18 +158,25 @@ class data_handler:
     def _savepoint_thread(self):
         while True:
             if (datetime.now() - self.last_save_time).total_seconds() >= self.record_time:
-                    if not self._socketDirExists:
-                        self.last_save_time = datetime.now()
-                        self.generate_filename()
-                        self.validate_savepoints()
+                if not self._socketDirExists:
+                    self.last_save_time = datetime.now()
+                    self.generate_filename()
+                    self.validate_savepoints()
             time.sleep(1)
+
+    def _check_socket(self):
+        while True:
+            if (datetime.now() - self.last_socket_check).total_seconds() >= self.socket_check_time:
+                if not self._socketDirExists:
+                    self.last_socket_check = datetime.now()
+                    self.validate_savepoints()
         
 
     def getRTC():
         kernelTime = os.popen(f"sudo hwclock -r").read()
         return kernelTime
         
-    def write_data(self, data, now:bool = False):
+    def write_data(self, data, now:bool = False, flush:bool = False):
         if data:
             if self._usepickle:
                 pass
@@ -189,6 +197,9 @@ class data_handler:
                 raise TypeError("Data must be string or bytes")
             
             if self._socketDirExists:
+                if datetime.now() >= self.socketWriteAnnoucement + self.buffer_save_interval:
+                    print(f"[INFO] Socket Valid at {datetime.now().strftime('%H:%M:%S')}...", flush=True)
+                    self.socketWriteAnnoucement = datetime.now()
                 self.socketQueue.put(data)
             else:
                 if not self._dataDirExists and not self._backupDirExists:
@@ -197,11 +208,14 @@ class data_handler:
                 self.buffer.append(data)
                 #print(self.buffer)
                 #print(self.buffer)
-                if datetime.now() - self.last_buffer_save >= self.buffer_save_interval and self.buffer or now == True:
+                if datetime.now() - self.last_buffer_save >= self.buffer_save_interval and self.buffer or now == True or flush == True:
                     if now:
                         self.generate_filename()
-                    print(f"[INFO] Writing buffer at {datetime.now().strftime('%H:%M:%S')}...", flush=True)
-                    if self._usepickle:
+                    print(f"[INFO] Writing Buffer at {datetime.now().strftime('%H:%M:%S')}...", flush=True)
+                    
+                    if self._usepickle and flush:
+                        writeData = data
+                    elif self._usepickle:
                         writeData = self.buffer
                     else:
                         writeData = b"".join(self.buffer)
@@ -225,7 +239,8 @@ class data_handler:
                     if self._backupDirExists:
                         backupWrite.join()
         else:
-            print("[INFO] No Data provided at the time of writing data.")
+            pass
+            #print("[INFO] No Data provided at the time of writing data.")
 
     # def pickle_append(filename, obj):
     #     with open(filename, 'ab+') as f:
@@ -242,13 +257,13 @@ class data_handler:
 
     def _writerThread(self, data, path):
         try:
-            with open(path, "ab+") as f:
-                if self._usepickle:
-                    pickle.dump(data, f)
-                else:
+            if self._usepickle:
+                with open(path, "a+b") as f:
+                    pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
+            else:
+                with open(path, "ab+") as f:
                     f.write(data)
-                f.flush()
-
+                    f.flush()
         except Exception as e:
             print(f"[WARNING] Failed to write to file: {path}\n {e}")
             self.validate_savepoints()

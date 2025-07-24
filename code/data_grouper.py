@@ -33,10 +33,10 @@ def socketGenerator(supervisor:daedalus_utils.supervisor):
             if key == "g_p_s":# or key == "pi_picture_camera":
                 buffer = False
             elif key == "pi_picture_camera":
-                buffer = False
+                buffer = True
             elif key == "infra_red_camera":
-                buffer = False
-            if key == "event_based_camera":
+                buffer = True
+            elif key == "event_based_camera":
                 buffer = True
                 bufsize = 32768
             else:
@@ -68,8 +68,13 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # INITIAL SUPERVISOR ACCESS AND DATA HANDLER
-    supervisorFile = "../config/supervisord.conf"
-    daedalus = daedalus_utils.supervisor(supervisorFile)
+    try:
+        supervisorFile = "../config/supervisord.conf"
+        daedalus = daedalus_utils.supervisor(supervisorFile)
+    except:
+        supervisorFile = "config/supervisord.conf"
+        daedalus = daedalus_utils.supervisor(supervisorFile)
+
     daedalusDataHandler = daedalus_utils.data_handler(
         sensorName=f"event_synced",
         extension=".pickle",
@@ -122,21 +127,21 @@ if __name__ == "__main__":
         prev_GPS_data = GPS_data
         packet_time = time.time()
 
-        try:
-            piPicData = socketDict["pi_picture_camera"][1].get_nowait()
-            print("[INFO] Pi Picture added to json data", flush=True)
-        except queue.Empty:
-            #print("[INFO] No Pictures Available")
-            piPicData = None
-        PiCam_Data = piPicData
+        # try:
+        #     piPicData = socketDict["pi_picture_camera"][1].get_nowait()
+        #     print("[INFO] Pi Picture added to json data", flush=True)
+        # except queue.Empty:
+        #     #print("[INFO] No Pictures Available")
+        #     piPicData = None
+        PiCam_Data = socketDict["pi_picture_camera"][2].getDataBuffer()
 
-        try:
-            irCamData = socketDict["infra_red_camera"][1].get_nowait()
-            print("[INFO] IR Picture added to json data", flush=True)
-        except queue.Empty:
-            #print("[INFO] No Pictures Available")
-            irCamData = None
-        IR_Data = irCamData
+        # try:
+        #     irCamData = socketDict["infra_red_camera"][1].get_nowait()
+        #     print("[INFO] IR Picture added to json data", flush=True)
+        # except queue.Empty:
+        #     #print("[INFO] No Pictures Available")
+        #     irCamData = None
+        IR_Data = socketDict["infra_red_camera"][2].getDataBuffer()
 
         event_Data = socketDict["event_based_camera"][2].getDataBuffer()
             
@@ -168,8 +173,7 @@ if __name__ == "__main__":
             "Picam_data": PiCam_Data,
             "IR_data": IR_Data,
         }
-
         #daedalusString = json.dumps(daedalusChunk).encode() + b'\n'
-        daedalusDataHandler.write_data(daedalusChunk)
+        daedalusDataHandler.write_data(daedalusChunk, flush=True)
 
     
