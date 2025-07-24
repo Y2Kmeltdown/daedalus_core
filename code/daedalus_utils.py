@@ -257,13 +257,12 @@ class data_handler:
 
     def _writerThread(self, data, path):
         try:
-            if self._usepickle:
-                with open(path, "a+b") as f:
+            with open(path, "ab+") as f:
+                if self._usepickle:
                     pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
-            else:
-                with open(path, "ab+") as f:
+                else:
                     f.write(data)
-                    f.flush()
+                f.flush()
         except Exception as e:
             print(f"[WARNING] Failed to write to file: {path}\n {e}")
             self.validate_savepoints()
