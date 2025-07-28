@@ -87,7 +87,7 @@ def _oled_display(supervisor:daedalus_utils.supervisor):
 
 def _mavlink_comms(port:str, baud:int):
     ser = serial.Serial(port, baud)
-    master = mavutil.mavlink_connection(ser.name)
+    connection = mavutil.mavlink_connection(ser.name)
     while True:
         msg = master.recv_match(blocking=True)
         if msg:
@@ -102,8 +102,12 @@ def _mavlink_comms(port:str, baud:int):
     #   Start Streaming Event Rate
     #   Stop Streaming Event Rate
     #   
+    
 
     # Data Streaming Thread
+
+
+
 
 #TODO change socket dictionary to a class with properties
 def _data_grouper(socketDictionary:dict, datahandler:daedalus_utils.data_handler, gpstimeout:float):
