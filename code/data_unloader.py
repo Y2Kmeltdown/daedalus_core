@@ -9,6 +9,7 @@ def loadDaedalusPickle(filename:str):
             while True:
                 try:
                     test = pickle.load(fr)
+                    print(test)
                     data.append(test)
                 except pickle.UnpicklingError as err:
                     e+=1
@@ -31,8 +32,10 @@ def parseImages(directory:str, pickleData, imageType:str):
                     with open(name, "wb") as f:
                         f.write(image)
 
+
 if __name__ == "__main__":
-    filename="data/event_synced_data_20250724_112824_1.pickle"
+    filename="D:\\event_synced\\event_synced_data_20250728_163508_2.pickle"
+    #filename = "data\event_synced_data_20250728_163508_2.pickle"
     pickleData = loadDaedalusPickle(filename)
     print(pickleData[0].keys())
     parseImages("data",pickleData,"IR_data")

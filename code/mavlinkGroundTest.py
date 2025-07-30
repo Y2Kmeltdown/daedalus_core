@@ -21,10 +21,10 @@ connection = mavutil.mavlink_connection('COM14', baud=115200)  # or 'udp:127.0.0
 connection.wait_heartbeat()
 
 
-def send_gimbal_command(conn:mavutil, messageID:int):
+def send_message_request(conn:mavutil, messageID:int):
     conn.mav.command_long_send(
     conn.target_system,
-    mavutil.mavlink.MAV_COMP_ID_PERIPHERAL,
+    mavutil.mavlink.MAV_COMP_ID_USER1,
     mavutil.mavlink.MAV_CMD_REQUEST_MESSAGE,
     0,
     messageID,

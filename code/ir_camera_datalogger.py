@@ -47,32 +47,30 @@ def ir_frame_logger(data_handler, timer: float):
     """
     Pulls frames from aravis.ir_buffer_streamer(), wraps them as PNGs
     """
+    cameraFramerate = 30
+    outputPeriod = int(cameraFramerate/args.fps)
+    i = 0
     for idx, buf in enumerate(aravis.ir_buffer_streamer()):
-        raw = bytes(buf)
-        ln  = len(raw)
+        if buf:
+            i+=1
+            if outputPeriod == i:
+                raw = bytes(buf)
+                img = Image.frombytes('L', (W, H), raw, 'raw', 'L', 0, 1)
+                bio = io.BytesIO()
+                img.save(bio, format='PNG')
+                bio.seek(0)
 
-        if ln < PAYLOAD:
-            print(f"[!] frame {idx} too small ({ln} bytes), skipping")
-            continue
-  
-        if ln > PAYLOAD:
-            raw = raw[:PAYLOAD]
-
-        img = Image.frombuffer('L', (W, H), raw, 'raw', 'L', 0, 1)
-        bio = io.BytesIO()
-        img.save(bio, format='PNG')
-        bio.seek(0)
-
-        chunk_size = 4096
-        bytes_list = []
-        while True:
-            chunk = bio.read(chunk_size)
-            if not chunk:
-                break
-            bytes_list.append(chunk)
-
-        data_handler.write_data(bytes_list, now=True)
-        time.sleep(timer)
+                chunk_size = 4096
+                bytes_list = []
+                while True:
+                    chunk = bio.read(chunk_size)
+                    if not chunk:
+                        break
+                    bytes_list.append(chunk)
+            
+            
+                data_handler.write_data(bytes_list, now=True)
+                i = 0
 
 if __name__ == "__main__":
     time.sleep(3) # Wait for socket server to start first
@@ -91,8 +89,8 @@ if __name__ == "__main__":
         help="Root directory where backups are written",
     )
     parser.add_argument(
-        "--timer",
-        default=1.0,
+        "--fps",
+        default=15,
         type=float,
         help="Seconds between consecutive snapshots",
     )
@@ -102,7 +100,6 @@ if __name__ == "__main__":
         help="Unix socket path for signalling (if used)",
     )
     args = parser.parse_args()
-
     # data_path   = os.path.join(args.data,   "ir_frames")
     # backup_path = os.path.join(args.backup, "ir_frames")
 
