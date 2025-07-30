@@ -172,6 +172,10 @@ if __name__ == "__main__":
         biases=nd.prophesee_evk4.Biases(
             diff_off=102,  # default: 102
             diff_on=73,    # default: 73
+        ),
+        rate_limiter=nd.prophesee_evk4.RateLimiter(
+            reference_period_us=200,
+            maximum_events_per_period=4000
         )
     )
 

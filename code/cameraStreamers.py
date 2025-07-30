@@ -119,7 +119,6 @@ class cameraManager:
         try:
             with piProcess.condition:
                 test = piProcess.condition.wait(timeout=5)
-                print(test)
                 convBytes = piProcess.frame
                 convFrame = cv2.imdecode(np.frombuffer(convBytes,np.uint8), cv2.IMREAD_COLOR)
             if pi_scale != 1:
@@ -266,22 +265,22 @@ if __name__ == "__main__":
             event_cam_width = device.properties().width
             event_cam_height = device.properties().height
         shm_event_data = shared_memory.SharedMemory(create=True, size=event_cam_width*event_cam_height)
-        eventProcess = Process(target=eventProducer, args=(evkSerialList[0], configuration, (event_cam_width, event_cam_height), shm_event_data), daemon=True)
         eventCamShape = (event_cam_height, event_cam_width, 2)
     except:
         shm_event_data = shared_memory.SharedMemory(create=True, size=event_cam_width*event_cam_height)
         eventCamShape = (event_cam_height, event_cam_width, 2)
+    eventProcess = Process(target=eventProducer, args=(evkSerialList[0], configuration, (event_cam_width, event_cam_height), shm_event_data), daemon=True)
 
     ir_cam_width = 640
     ir_cam_height = 480
     try:
         daedalus_utils.configure_interface()
         shm_ir_data = shared_memory.SharedMemory(create=True, size=ir_cam_width*ir_cam_height)
-        irProcess = Process(target=irFrameGen, args=(shm_ir_data, ), daemon=True) 
         irCamShape = (ir_cam_height, ir_cam_width, 1)
     except:
         shm_ir_data = shared_memory.SharedMemory(create=True, size=ir_cam_width*ir_cam_height)
         irCamShape = (ir_cam_height, ir_cam_width, 1)
+    irProcess = Process(target=irFrameGen, args=(shm_ir_data, ), daemon=True) 
   
     cameras = cameraManager(
         idx=0, 

@@ -91,7 +91,7 @@ parser.add_argument(
 )
 parser.add_argument(
     "--port",
-    default=8081,
+    default=8080,
     type=int,
     help="Port at which server is available on"
 )
