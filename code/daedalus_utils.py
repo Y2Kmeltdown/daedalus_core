@@ -15,7 +15,10 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Dict
 
-import pyudev
+try:
+    import pyudev
+except:
+    pass
 import numpy as np
 
 data_lock = Lock()
@@ -592,7 +595,14 @@ class transceiver:
             return bytearray()
 
     def transmit(self, data):
-        # Add type checking and encoding handling
+        if isinstance(data, list):
+            if isinstance(data[0], bytes):
+                data = b"".join(data)
+            elif isinstance(data[0], str):
+                data = "".join(data)
+            else:
+                raise TypeError("Data within a list must be string or bytes")
+    # Add type checking and encoding handling
         if isinstance(data, str):
             data = data.encode('utf-8')
         elif not isinstance(data, bytes):

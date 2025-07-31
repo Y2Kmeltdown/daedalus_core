@@ -13,11 +13,13 @@ import daedalus_utils
 
 
 W, H = 640, 480
+S = 2
 PAYLOAD = W * H
 
 
 IP_ADDR   = "169.254.100.1/16"
 IFACE     = "eth0"
+
 
 def configure_interface(addr: str = IP_ADDR, iface: str = IFACE) -> None:
     """Add a link-local address and bring the interface up if needed."""
@@ -42,7 +44,7 @@ def configure_interface(addr: str = IP_ADDR, iface: str = IFACE) -> None:
     # 3. Make sure the link is up
     subprocess.run(["ip", "link", "set", "dev", iface, "up"], check=True)
     
-def ir_frame_logger(data_handler, fps: float):
+def ir_frame_logger(transciever:daedalus_utils.transceiver, fps):
     """
     Pulls frames from aravis.ir_buffer_streamer(), wraps them as PNGs
     """
@@ -55,8 +57,9 @@ def ir_frame_logger(data_handler, fps: float):
             if outputPeriod == i:
                 raw = bytes(buf)
                 img = Image.frombytes('L', (W, H), raw, 'raw', 'L', 0, 1)
+                img = img.resize((int(W/S),int(H/S)),Image.LANCZOS)
                 bio = io.BytesIO()
-                img.save(bio, format='PNG')
+                img.save(bio, format="JPEG", quality=75, optimize=True)
                 bio.seek(0)
 
                 chunk_size = 4096
@@ -68,8 +71,9 @@ def ir_frame_logger(data_handler, fps: float):
                     bytes_list.append(chunk)
             
             
-                data_handler.write_data(bytes_list, now=True)
+                transciever.transmit(bytes_list)
                 i = 0
+                break
 
 if __name__ == "__main__":
     time.sleep(3) # Wait for socket server to start first
@@ -89,7 +93,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--fps",
-        default=15,
+        default=1,
         type=float,
         help="Seconds between consecutive snapshots",
     )
@@ -99,23 +103,17 @@ if __name__ == "__main__":
         help="Unix socket path for signalling (if used)",
     )
     args = parser.parse_args()
-    # data_path   = os.path.join(args.data,   "ir_frames")
-    # backup_path = os.path.join(args.backup, "ir_frames")
 
-    irDataHandler = daedalus_utils.data_handler(
-        sensorName="ir_frames",
-        extension=".png",
-        dataPath=args.data,
-        backupPath=args.backup,
-        recordingTime=0,
-        socketPath=args.socket
-    )
     cameraFramerate = 30
     assert args.fps <= cameraFramerate
 
+    port = "/dev/ttyUSB0"
+    baud = 460800
+    irTransciever = daedalus_utils.transceiver(port, baud)
+
     try:
         print(f"[INFO] Starting IR frame logger")
-        ir_frame_logger(irDataHandler, args.fps)
+        ir_frame_logger(irTransciever, args.fps)
 
     except (KeyboardInterrupt, SystemExit):
         print("\n[INFO] Stopping IR frame logger")
