@@ -89,7 +89,7 @@ def _mavlink_comms(port:str, baud:int):
     ser = serial.Serial(port, baud)
     connection = mavutil.mavlink_connection(ser.name)
     while True:
-        msg = master.recv_match(blocking=True)
+        msg = connection.recv_match(blocking=True)
         if msg:
             pass
     # Listening Thread
