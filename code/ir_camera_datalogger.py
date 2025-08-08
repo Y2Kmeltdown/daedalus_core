@@ -54,10 +54,15 @@ def ir_frame_logger(data_handler, fps: float):
             i+=1
             if outputPeriod == i:
                 raw = bytes(buf)
+                # print("RAW IMAGE")
+                # print(len(raw))
                 img = Image.frombytes('L', (W, H), raw, 'raw', 'L', 0, 1)
+            
                 bio = io.BytesIO()
                 img.save(bio, format='PNG')
                 bio.seek(0)
+                # print("PNG IMAGE")
+                # print(bio.getbuffer().nbytes)
 
                 chunk_size = 4096
                 bytes_list = []
@@ -79,7 +84,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--data",
-        default="/usr/local/daedalus/data/ir_data",
+        default="data/ir_data",
         help="Root directory where recordings are stored",
     )
     parser.add_argument(

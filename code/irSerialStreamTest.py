@@ -72,6 +72,7 @@ def ir_frame_logger(transciever:daedalus_utils.transceiver, fps):
             
             
                 transciever.transmit(bytes_list)
+                transciever.transmit(b"\n")
                 i = 0
                 break
 

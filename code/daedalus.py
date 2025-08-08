@@ -4,6 +4,7 @@ import time
 import sys
 import logging
 import os
+import subprocess
 from threading import Lock, Thread
 
 import serial
@@ -106,8 +107,22 @@ def _mavlink_comms(port:str, baud:int):
 
     # Data Streaming Thread
 
-
-
+def update_clock_time():
+    if os.geteuid() != 0:
+        sys.exit("[ERROR] Please run this script with sudo (needs NET_ADMIN)")
+    subprocess.run(
+            ["hwclock", "-w"],
+            check=True
+        )
+    subprocess.run(
+            ["hwclock", "-s"],
+            check=True
+        )
+    subprocess.run(
+            ["hwclock", "--verbose"],
+            check=True
+        )
+    
 
 #TODO change socket dictionary to a class with properties
 def _data_grouper(socketDictionary:dict, datahandler:daedalus_utils.data_handler, gpstimeout:float):
@@ -194,6 +209,8 @@ if __name__ == "__main__":
     port = args.port
 
     gpstimeout = args.gpstimeout
+
+    update_clock_time()
 
     # INITIAL SUPERVISOR ACCESS AND DATA HANDLER
     try:

@@ -39,6 +39,7 @@ def cameraHandler(camID, piCamDataHandler:daedalus_utils.data_handler, config):
     time.sleep(2)
     while True:
         try:
+            timestart = time.monotonic_ns()
             data = io.BytesIO()
             timestr = time.strftime("%Y%m%d-%H%M%S")
             ct = datetime.datetime.now()
@@ -61,6 +62,8 @@ def cameraHandler(camID, piCamDataHandler:daedalus_utils.data_handler, config):
                 bytesList.append(chunk)
                 
             piCamDataHandler.write_data(bytesList, now=True)
+            timeend = time.monotonic_ns()
+            runtime = (timeend-timestart)/1000000000
 
             
 
@@ -69,6 +72,7 @@ def cameraHandler(camID, piCamDataHandler:daedalus_utils.data_handler, config):
             print(f"Error during snapshot capture: {e}", flush=True)
 
         time.sleep(args.timer)
+        
 
 if __name__ == "__main__":
     time.sleep(3) # Wait for socket server to start first
@@ -79,7 +83,7 @@ if __name__ == "__main__":
         help="Camera number (for example 0 or 1)")
     parser.add_argument(
         "--data",
-        default="/usr/local/daedalus/data/pi_picture",
+        default="data/pi_picture",
         help="Path of the directory where recordings are stored",
         )
     parser.add_argument(

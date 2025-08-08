@@ -705,12 +705,13 @@ class socketServer(Thread):
                 while True:
                     data = conn.recv(self.bufsize)
                     
-                    if data[-5:] == b"EOT\x03\x04":
-                        socketBuffer.append(data[:-5])
+                    index = data.find(b"EOT\x03\x04")
+                    if index != -1:
+                        socketBuffer.append(data[:index])
                         #print("[INFO] EOT Detected")
                         
                         socketOut = b"".join(socketBuffer)
-                        socketBuffer = []
+                        socketBuffer = [data[index+5:]]
                         if self.buffer:
                             with data_lock:
                                 self.dataList.append(socketOut)
