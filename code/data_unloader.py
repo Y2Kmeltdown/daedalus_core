@@ -29,7 +29,7 @@ def parseImages(directory:str, pickleData, imageType:str):
         if isinstance(imageList, list):
             if len(imageList):
                 for n, image in enumerate(imageList):
-                    name = f"{directory}\{imageType}_{timestamp}_{n}.png"
+                    name = f"{directory}/{imageType}_{timestamp}_{n}.png"
                     with open(name, "wb") as f:
                         f.write(image)
 
@@ -52,14 +52,27 @@ def parseVideo(directory:str, pickleData, imageType:str):
     out.release()
     print(f"Video saved as {output_filename}")
 
+def parseRawEvents(directory:str, pickleData, dataType:str):
+    output_filename = f"{directory}/{dataType}.raw"
+    data = [(i["Timestamp"],i[dataType]) for i in pickleData]
+    print(len(data))
+    eventDataList = []
+    for timestamp, eventList in data:
+        if isinstance(eventList, list):
+            eventBytes = b''.join(eventList)
+            eventDataList.append(eventBytes)
+    eventData = b''.join(eventDataList)
+    with open(output_filename, "wb") as f:
+        f.write(eventData)
+
 if __name__ == "__main__":
     #filename="D:\\event_synced\\event_synced_data_20250728_163508_2.pickle"
-    filename = "data/event_synced_data_20250808_145033_1.pickle"
+    filename = "data/event_synced_data_20250808_150200_1.pickle"
     pickleData = loadDaedalusPickle(filename)
     print(pickleData[0].keys())
-    #parseImages("data",pickleData,"IR_data")
+    parseImages("data",pickleData,"Picam_data")
     parseVideo("data",pickleData,"IR_data")
-    #parseImages("data",pickleData,"Picam_data")
+    parseRawEvents("data", pickleData, "Event_data")
 
 
 
