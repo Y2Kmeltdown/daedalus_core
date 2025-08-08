@@ -9,6 +9,7 @@ sudo raspi-config nonint do_rgpio 0
 
 sudo sed -i 's/dtparam=i2c_arm=on/dtparam=i2c_arm=on,i2c_arm_baudrate=400000/g' /boot/firmware/config.txt
 sudo echo "usb_max_current_enable=1" >> /boot/firmware/config.txt
+sudo echo "dtoverlay=i2c-rtc,ds3231" >> /boot/firmware/config.txt
 
 sudo sed -i 's/#HandlePowerKey=poweroff/HandlePowerKey=ignore/g' /etc/systemd/logind.conf
 

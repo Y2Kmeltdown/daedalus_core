@@ -10,12 +10,12 @@ sudo raspi-config nonint do_change_timezone Australia/Sydney
 
 sudo sed -i 's/dtparam=i2c_arm=on/dtparam=i2c_arm=on,i2c_arm_baudrate=400000/g' /boot/firmware/config.txt
 sudo echo "usb_max_current_enable=1" >> /boot/firmware/config.txt
-sudo echo "usb_max_current_enable=1" >> /boot/firmware/config.txt
+sudo echo "dtoverlay=i2c-rtc,ds3231" >> /boot/firmware/config.txt
 
 sudo sed -i 's/#HandlePowerKey=poweroff/HandlePowerKey=ignore/g' /etc/systemd/logind.conf
 
 sudo echo "RuntimeWatchdogSec=15" >> /etc/systemd/system.conf
-sudo echo "dtoverlay=i2c-rtc,ds3231" >> /etc/systemd/system.conf
+
 
 ## DIRECTORY SETUP
 if [ -z "${1}" ]; then
