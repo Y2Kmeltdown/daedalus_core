@@ -1,4 +1,7 @@
 /Data
+/renders
+faery_script.py
+/recordings
 */__pycache__
 /lg-master
 /master.zip
