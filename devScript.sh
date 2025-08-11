@@ -45,6 +45,8 @@ sudo apt install -y python3-picamera2 --no-install-recommends
 pip install --break-system-packages -r /usr/local/daedalus/config/requirements.txt
 
 ## DRIVER INSTALLATION
+sudo neuromorphic-drivers-install-udev-rules
+sudo /usr/bin/python3.11 /usr/local/lib/python3.11/dist-packages/neuromorphic_drivers/udev.py
 sudo cp /usr/local/daedalus/config/65-neuromorphic-drivers.rules /etc/udev/rules.d/65-neuromorphic-drivers.rules
 sudo cp /usr/local/daedalus/config/99-camera.rules /etc/udev/rules.d/99-camera.rules
 
