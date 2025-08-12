@@ -34,25 +34,23 @@ def eventProducer(serial, config, dims, event_shared_memory):
     try:
         with nd.open(serial=serial, configuration=config) as device:
             print(f"Successfully started EVK4 {args.serial}")
+
             for status, packet in device:
                 if packet:
-                    if "dvs_events" in packet:
-
-                        frame[
-                            packet["dvs_events"]["y"],
-                            packet["dvs_events"]["x"],
-                        ] = packet["dvs_events"]["on"]*255
-
-                        if time.monotonic_ns()-oldTime >= (1/50)*1000000000:
-
-                            with data_lock:
-                                event_shared_memory.buf[:] = frame.tobytes()
-
-                            frame = np.zeros(
-                                (dims[1], dims[0]),
-                                dtype=np.uint8,
-                            )+127
-                            oldTime = time.monotonic_ns()
+                    if packet.polarity_events is not None:
+                        if packet.polarity_events.size != 0:
+                            frame[
+                                packet.polarity_events["y"],
+                                packet.polarity_events["x"],
+                            ] = packet.polarity_events["on"]*255
+                            if time.monotonic_ns()-oldTime >= (1/50)*1000000000:
+                                with data_lock:
+                                    event_shared_memory.buf[:] = frame.tobytes()
+                                frame = np.zeros(
+                                    (dims[1], dims[0]),
+                                    dtype=np.uint8,
+                                )+127
+                                oldTime = time.monotonic_ns()
     except KeyboardInterrupt:
         logger.warning("Keyboard Interrupt, exiting...")
 
