@@ -97,6 +97,7 @@ class cameraManager:
         irFrame = irFrame.reshape((ir_height, ir_width))
         if ir_scale != 1:
             irFrame = cv2.resize(irFrame, dsize=(ir_width//ir_scale, ir_height//ir_scale), interpolation=cv2.INTER_CUBIC)
+        irFrame = np.flip(irFrame, 0)
         rgbIRFrame = np.stack((irFrame,)*3, axis=-1)
 
 
@@ -121,6 +122,7 @@ class cameraManager:
                 convFrame = cv2.imdecode(np.frombuffer(convBytes,np.uint8), cv2.IMREAD_COLOR)
             if pi_scale != 1:
                 convFrame = cv2.resize(convFrame, dsize=(pi_width//pi_scale, pi_height//pi_scale), interpolation=cv2.INTER_CUBIC)
+            convFrame = np.flip(convFrame, 0)
         except:
             convFrame = np.zeros((pi_height, pi_width, 3))
             convFrame = cv2.resize(convFrame, dsize=(pi_width//pi_scale, pi_height//pi_scale), interpolation=cv2.INTER_CUBIC)
