@@ -711,7 +711,9 @@ class socketServer(Thread):
                         #print("[INFO] EOT Detected")
                         
                         socketOut = b"".join(socketBuffer)
-                        socketBuffer = [data[index+5:]]
+                        if data[index+5:]:
+                            socketBuffer = [data[index+5:]]
+                            
                         if self.buffer:
                             with data_lock:
                                 self.dataList.append(socketOut)
