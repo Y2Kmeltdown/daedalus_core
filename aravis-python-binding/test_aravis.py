@@ -1,11 +1,13 @@
 import aravis
 from PIL import Image
+import numpy as np
 from queue import LifoQueue
 import time
 from threading import Thread
 import subprocess
 import sys
 import os
+import struct
 
 width = 640
 height = 480
@@ -45,47 +47,84 @@ def queueRetriever(testQueue:LifoQueue):
     except:
         pass
 
+def contrastStretch(buffer):
+    minval = np.min(buffer)
+    maxval = np.max(buffer)
+    if maxval > minval:
+        scale = 255/(maxval-minval)
+        stretched = (buffer-minval) * scale + 0.5
+    return stretched.astype(np.uint8)
+
+
 try:
     configure_interface(addr=IP_ADDR, iface=IFACE)
+
+    rawBuffer = aravis.get_camera_buffer(raw=True)
+    buffer = aravis.get_camera_buffer(raw=False)
+    print(rawBuffer)
+    print(buffer)
+    #rawbuffer = aravis.get_camera_buffer(raw=False)
+    #print(rawbuffer)
+    #rawbuffer = aravis.get_camera_buffer(raw=True)
+    # rawbuffer = aravis.get_raw_buffer()
+    # pil_image = Image.fromarray(rawbuffer, mode='I;16')
+    # pil_image.save('uncompressed_image.png')
+
+    # testbuffer = contrastStretch(rawbuffer)
+    # pil_image_test = Image.fromarray(testbuffer, mode='L')
+    # pil_image_test.save('compressed_image.png')
+
+    # time.sleep(3)
     # buffer = aravis.get_camera_buffer()
-    # print(buffer)
-    # img = Image.frombytes('L', (width, height), bytes(buffer))
-    # img = img.save(f"data/test.jpg")
+    # test_image = np.frombuffer(buffer, dtype='uint8')
+    # test = Image.fromarray(test_image, mode='L')
+    # test.save('aravis_compressed_image.png')
+
+
+    
+    # img = np.frombuffer(buffer, dtype='uint16')
+    # img = img.reshape((height, width))
+
+
+    # pil_image = Image.fromarray(img, mode='L')
+    # pil_image.save('uncompressed_image.png')
+    #img = Image.frombytes('L', (width, height), bytes(buffer))
+    #img = img.save(f"test.jpg")
     
     # buffers = aravis.get_camera_buffers(60)
     # for i, buffer in enumerate(buffers):
     #     print(len(buffer))
     #     img = Image.frombytes('L', (width, height), bytes(buffer))
     #     img = img.save(f"data/test{i}.jpg")
-    testThread = Thread(target=queueRetriever, args=(testQueue, ), daemon=True)
-    testThread.start()
-    i = 0
-    frameStart = time.monotonic_ns()
-    totalStart = time.monotonic_ns()
-    computeTime = ""
-    for buf in aravis.ir_buffer_streamer():
-        frameNo = f"Frame: {i-1}"
-        totalEnd = time.monotonic_ns()
-        totalTime = f"Total Time:{totalEnd-totalStart}"
-        totalStart = time.monotonic_ns()
-        frameEnd = time.monotonic_ns()
-        frameTime = f"Frame Timing:{frameEnd-frameStart}"
-        print(f"{frameNo}\n{frameTime}\n{computeTime}\n{totalTime}\n")
-        computeStart = time.monotonic_ns()
-        i += 1
-        if buf:
-            img = Image.frombytes('L', (width, height), bytes(buf))
-            if testQueue.full():
-                testQueue.queue.clear()
-            testQueue.put_nowait(img)
+    # testThread = Thread(target=queueRetriever, args=(testQueue, ), daemon=True)
+    # testThread.start()
+    # i = 0
+    # frameStart = time.monotonic_ns()
+    # totalStart = time.monotonic_ns()
+    # computeTime = ""
+    # for buf in aravis.ir_buffer_streamer():
+    #     frameNo = f"Frame: {i-1}"
+    #     totalEnd = time.monotonic_ns()
+    #     totalTime = f"Total Time:{totalEnd-totalStart}"
+    #     totalStart = time.monotonic_ns()
+    #     frameEnd = time.monotonic_ns()
+    #     frameTime = f"Frame Timing:{frameEnd-frameStart}"
+    #     print(f"{frameNo}\n{frameTime}\n{computeTime}\n{totalTime}\n")
+    #     computeStart = time.monotonic_ns()
+    #     i += 1
+    #     if buf:
+    #         img = Image.frombytes('L', (width, height), bytes(buf))
+    #         if testQueue.full():
+    #             testQueue.queue.clear()
+    #         testQueue.put_nowait(img)
         
-        # if i % 2:
-        #     time.sleep(0.001)
+    #     # if i % 2:
+    #     #     time.sleep(0.001)
             
-        computeEnd = time.monotonic_ns()
-        computeTime = f"Compute Time:{computeEnd-computeStart}"
+    #     computeEnd = time.monotonic_ns()
+    #     computeTime = f"Compute Time:{computeEnd-computeStart}"
         
-        frameStart = time.monotonic_ns()
+    #     frameStart = time.monotonic_ns()
 
 except Exception as e:
     print(f"Error: {e}") 
