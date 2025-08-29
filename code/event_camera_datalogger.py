@@ -62,6 +62,10 @@ class eventCamera(Thread):
                     if packet:
                         if packet.polarity_events is not None:
                             events = packet.polarity_events.tolist()
+                        if packet.trigger_events is not None:
+                            # packet.trigger_events is a structured numpy array
+                            # with dtype [("t", "<u8"), ("id, "<u1"), ("rising", "?")])
+                            pass
                 else:
                     events = packet
 
