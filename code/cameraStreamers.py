@@ -34,25 +34,23 @@ def eventProducer(serial, config, dims, event_shared_memory):
     try:
         with nd.open(serial=serial, configuration=config) as device:
             print(f"Successfully started EVK4 {args.serial}")
+
             for status, packet in device:
                 if packet:
-                    if "dvs_events" in packet:
-
-                        frame[
-                            packet["dvs_events"]["y"],
-                            packet["dvs_events"]["x"],
-                        ] = packet["dvs_events"]["on"]*255
-
-                        if time.monotonic_ns()-oldTime >= (1/50)*1000000000:
-
-                            with data_lock:
-                                event_shared_memory.buf[:] = frame.tobytes()
-
-                            frame = np.zeros(
-                                (dims[1], dims[0]),
-                                dtype=np.uint8,
-                            )+127
-                            oldTime = time.monotonic_ns()
+                    if packet.polarity_events is not None:
+                        if packet.polarity_events.size != 0:
+                            frame[
+                                packet.polarity_events["y"],
+                                packet.polarity_events["x"],
+                            ] = packet.polarity_events["on"]*255
+                            if time.monotonic_ns()-oldTime >= (1/50)*1000000000:
+                                with data_lock:
+                                    event_shared_memory.buf[:] = frame.tobytes()
+                                frame = np.zeros(
+                                    (dims[1], dims[0]),
+                                    dtype=np.uint8,
+                                )+127
+                                oldTime = time.monotonic_ns()
     except KeyboardInterrupt:
         logger.warning("Keyboard Interrupt, exiting...")
 
@@ -99,6 +97,7 @@ class cameraManager:
         irFrame = irFrame.reshape((ir_height, ir_width))
         if ir_scale != 1:
             irFrame = cv2.resize(irFrame, dsize=(ir_width//ir_scale, ir_height//ir_scale), interpolation=cv2.INTER_CUBIC)
+        irFrame = np.flip(irFrame, 0)
         rgbIRFrame = np.stack((irFrame,)*3, axis=-1)
 
 
@@ -123,6 +122,7 @@ class cameraManager:
                 convFrame = cv2.imdecode(np.frombuffer(convBytes,np.uint8), cv2.IMREAD_COLOR)
             if pi_scale != 1:
                 convFrame = cv2.resize(convFrame, dsize=(pi_width//pi_scale, pi_height//pi_scale), interpolation=cv2.INTER_CUBIC)
+            convFrame = np.flip(convFrame, 0)
         except:
             convFrame = np.zeros((pi_height, pi_width, 3))
             convFrame = cv2.resize(convFrame, dsize=(pi_width//pi_scale, pi_height//pi_scale), interpolation=cv2.INTER_CUBIC)
