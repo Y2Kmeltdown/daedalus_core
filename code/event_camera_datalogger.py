@@ -59,7 +59,9 @@ class eventCamera(Thread):
             for status, packet in device:
                 #print(packet.keys())
                 if self.raw == False:
-                    events = packet["dvs_events"].tolist()
+                    if packet:
+                        if packet.polarity_events is not None:
+                            events = packet.polarity_events.tolist()
                 else:
                     events = packet
 
