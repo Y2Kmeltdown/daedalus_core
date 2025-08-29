@@ -61,17 +61,19 @@ class eventCamera(Thread):
                 if self.raw == False:
                     if packet:
                         if packet.polarity_events is not None:
-                            events = packet.polarity_events.tolist()
+                            events_cursor += len(packet.polarity_events)
+                            events = packet.polarity_events.tobytes()
                         if packet.trigger_events is not None:
                             # packet.trigger_events is a structured numpy array
                             # with dtype [("t", "<u8"), ("id, "<u1"), ("rising", "?")])
                             pass
                 else:
+                    events_cursor += len(packet)
                     events = packet
 
                 with data_lock:
                     self.eventList.append(events)
-                events_cursor += len(packet)
+                
                 # Prepare sample data
                 try:
                     status_dict = dataclasses.asdict(status)
