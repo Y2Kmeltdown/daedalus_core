@@ -66,10 +66,12 @@ def parseRawEvents(directory:str, pickleData, dataType:str):
         f.write(eventData)
 
 if __name__ == "__main__":
-    filename="data\event_synced_data_20250811_114622_1.pickle"
+    filename="data\event_synced_data_20250826_141916_1.pickle"
     #filename = "data/event_synced_data_20250808_150200_1.pickle"
     pickleData = loadDaedalusPickle(filename)
-    print(pickleData[0].keys())
-    parseImages("renders",pickleData,"Picam_data")
-    parseVideo("renders",pickleData,"IR_data")
+    #print(pickleData[0].keys())
+    #with open("recordings\\testWorking.raw", 'wb') as f:
+        #f.write(pickleData[15]["Event_data"][0])
+    #parseImages("renders",pickleData,"Picam_data")
+    #parseVideo("renders",pickleData,"IR_data")
     parseRawEvents("recordings", pickleData, "Event_data")

@@ -224,7 +224,7 @@ if __name__ == "__main__":
             backupPath=args.backup,
             recordingTime=args.record_time
             )
-        raw = True
+        raw = False
         camera = eventCamera(
             serial=serial, 
             configuration=configuration, 
