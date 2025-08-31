@@ -78,6 +78,7 @@ class data_handler:
         self.backupPath = Path(backupPath)
         self.dataFileLock = Lock()
         self.backupFileLock = Lock()
+        
         if socketPath:
             self.socketPath = Path(socketPath)
             self.socketQueue = queue.Queue()

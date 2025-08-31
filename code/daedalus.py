@@ -167,7 +167,7 @@ def _data_grouper(socketDictionary:dict, datahandler:daedalus_utils.data_handler
             "Picam_data": PiCam_Data,
             "IR_data": IR_Data,
         }
-        datahandler.write_data(daedalusChunk, flush=True)
+        datahandler.write_data(daedalusChunk)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
