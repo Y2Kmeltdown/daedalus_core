@@ -76,6 +76,8 @@ class data_handler:
 
         self.dataPath = Path(dataPath)
         self.backupPath = Path(backupPath)
+        self.dataFileLock = Lock()
+        self.backupFileLock = Lock()
         if socketPath:
             self.socketPath = Path(socketPath)
             self.socketQueue = queue.Queue()
@@ -225,22 +227,22 @@ class data_handler:
 
                     if self._dataDirExists:
                         dataFile = self.dataPath / self.file_name
-                        dataWrite = Thread(target=self._writerThread, kwargs={"data":writeData, "path":dataFile}, daemon=True)
+                        dataWrite = Thread(target=self._writerThread, kwargs={"data":writeData, "path":dataFile, "fileLock":self.dataFileLock}, daemon=True)
                         dataWrite.start()
 
                     if self._backupDirExists:
                         backupFile = self.backupPath / self.file_name
-                        backupWrite = Thread(target=self._writerThread, kwargs={"data":writeData, "path":backupFile}, daemon=True)
+                        backupWrite = Thread(target=self._writerThread, kwargs={"data":writeData, "path":backupFile, "fileLock":self.backupFileLock}, daemon=True)
                         backupWrite.start()
 
                     self.buffer.clear()  # Clear buffer after writing
                     self.last_buffer_save = datetime.now()
 
-                    if self._dataDirExists:
-                        dataWrite.join()
+                    # if self._dataDirExists:
+                    #     dataWrite.join()
                     
-                    if self._backupDirExists:
-                        backupWrite.join()
+                    # if self._backupDirExists:
+                    #     backupWrite.join()
         else:
             pass
             #print("[INFO] No Data provided at the time of writing data.")
@@ -258,14 +260,15 @@ class data_handler:
     #             except EOFError:
     #                 break
 
-    def _writerThread(self, data, path):
+    def _writerThread(self, data, path, fileLock):
         try:
-            with open(path, "ab+") as f:
-                if self._usepickle:
-                    pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
-                else:
-                    f.write(data)
-                f.flush()
+            with fileLock:
+                with open(path, "ab+") as f:
+                    if self._usepickle:
+                        pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
+                    else:
+                        f.write(data)
+                    f.flush()
         except Exception as e:
             print(f"[WARNING] Failed to write to file: {path}\n {e}")
             self.validate_savepoints()
