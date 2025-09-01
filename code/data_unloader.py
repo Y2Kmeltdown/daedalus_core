@@ -2,6 +2,9 @@ import pickle
 import cv2
 import numpy as np
 
+def flatten(xss):
+    return [x for xs in xss for x in xs]
+
 def loadDaedalusPickle(filename:str):
     data = []
     with open(filename, 'rb') as fr:
@@ -20,6 +23,7 @@ def loadDaedalusPickle(filename:str):
             i-=1
             print(f"[INFO] All {i} pickles are unzipped. {e} {'Pickles' if e<1 else 'Pickle'} {'Werent' if e<1 else 'Wasnt'} preserved.")
             pass
+    data = flatten(data)
     return data
 
 
@@ -66,12 +70,12 @@ def parseRawEvents(directory:str, pickleData, dataType:str):
         f.write(eventData)
 
 if __name__ == "__main__":
-    filename="data\event_synced_data_20250826_141916_1.pickle"
+    filename="data\event_synced_data_20250901_102349_2.pickle"
     #filename = "data/event_synced_data_20250808_150200_1.pickle"
     pickleData = loadDaedalusPickle(filename)
-    #print(pickleData[0].keys())
+    print(pickleData[0].keys())
     #with open("recordings\\testWorking.raw", 'wb') as f:
         #f.write(pickleData[15]["Event_data"][0])
-    #parseImages("renders",pickleData,"Picam_data")
-    #parseVideo("renders",pickleData,"IR_data")
-    parseRawEvents("recordings", pickleData, "Event_data")
+    parseImages("renders",pickleData,"Picam_data")
+    parseVideo("renders",pickleData,"IR_data")
+    #parseRawEvents("recordings", pickleData, "Event_data")
