@@ -720,7 +720,7 @@ class socketServer(Thread):
                             socketBuffer = [data[index+5:]]
                             
                         if self.buffer:
-                            with self.data_lock:
+                            with self.datalock:
                                 self.dataList.append(socketOut)
                         else:
                             self.socketQueue.put(socketOut)
@@ -734,7 +734,7 @@ class socketServer(Thread):
                     
     def getDataBuffer(self):
         if self.buffer:
-            with self.data_lock:
+            with self.datalock:
                 data = self.dataList
                 self.dataList = []
             return data
