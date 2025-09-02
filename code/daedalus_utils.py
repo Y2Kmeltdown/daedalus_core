@@ -19,9 +19,8 @@ try:
     import pyudev
 except:
     pass
-import numpy as np
 
-data_lock = Lock()
+import numpy as np
 
 IP_ADDR   = "169.254.100.1/16"
 IFACE     = "eth0"
@@ -692,6 +691,8 @@ class socketServer(Thread):
             self.socketList = []
         else:
             self.socketQueue = socketQueue
+
+        self.datalock = Lock()
         
 
     def run(self):
@@ -719,7 +720,7 @@ class socketServer(Thread):
                             socketBuffer = [data[index+5:]]
                             
                         if self.buffer:
-                            with data_lock:
+                            with self.data_lock:
                                 self.dataList.append(socketOut)
                         else:
                             self.socketQueue.put(socketOut)
@@ -733,7 +734,7 @@ class socketServer(Thread):
                     
     def getDataBuffer(self):
         if self.buffer:
-            with data_lock:
+            with self.data_lock:
                 data = self.dataList
                 self.dataList = []
             return data
