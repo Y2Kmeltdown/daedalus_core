@@ -102,7 +102,7 @@ class data_handler:
 
         self.dataWrite.start()
         self.backupWrite.start()
-        
+
         self.record_time = recordingTime
         self.socket_check_time = socket_check_time
         socketCheckThread = Thread(target=self._check_socket, daemon=True)
@@ -263,11 +263,11 @@ class data_handler:
                     dataFile = rootDir / self.file_name
                     with open(dataFile, "ab+") as f:
                         while not data.Empty():
-                            data = data.get()
+                            writeData = data.get()
                             if self._usepickle:
-                                pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
+                                pickle.dump(writeData, f, protocol=pickle.HIGHEST_PROTOCOL)
                             else:
-                                f.write(data)
+                                f.write(writeData)
                             f.flush()
             except Exception as e:
                 print(f"[WARNING] Failed to write to file: {dataFile}\n {e}")
