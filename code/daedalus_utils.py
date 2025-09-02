@@ -64,20 +64,24 @@ class data_handler:
         self._sensorExtension = extension
         self._usepickle = pickle
 
-        self._dataDirExists = False
-        self._backupDirExists = False
-        self._socketDirExists = False
-        self._dataIsMounted = False
-        self._backupIsMounted = False
-        self._socketIsMounted = False
-
         self.index = 0
 
+        self._dataDirExists = False
+        self._dataIsMounted = False
         self.dataPath = Path(dataPath)
+        self.dataQueue = queue.Queue()
+        self.dataWrite = Thread(target=self._datawriteThread, kwargs={"data": self.dataQueue, "rootDir":self.dataPath}, daemon=True)
+
+        self._backupDirExists = False
+        self._backupIsMounted = False
         self.backupPath = Path(backupPath)
-        self.dataFileLock = Lock()
-        self.backupFileLock = Lock()
+        self.backupQueue = queue.Queue()
+        self.backupWrite = Thread(target=self._datawriteThread, kwargs={"data": self.backupQueue, "rootDir":self.backupPath}, daemon=True)
+        #self.dataFileLock = Lock()
+        #self.backupFileLock = Lock()
         
+        self._socketDirExists = False
+        self._socketIsMounted = False
         if socketPath:
             self.socketPath = Path(socketPath)
             self.socketQueue = queue.Queue()
@@ -95,6 +99,10 @@ class data_handler:
         self.buffer = []
         self.generate_savepoints()
         self.generate_filename()
+
+        self.dataWrite.start()
+        self.backupWrite.start()
+        
         self.record_time = recordingTime
         self.socket_check_time = socket_check_time
         socketCheckThread = Thread(target=self._check_socket, daemon=True)
@@ -211,8 +219,7 @@ class data_handler:
                     raise IOError("No valid locations exist to write data")
                 
                 self.buffer.append(data)
-                #print(self.buffer)
-                #print(self.buffer)
+
                 if datetime.now() - self.last_buffer_save >= self.buffer_save_interval and self.buffer or now == True or flush == True:
                     if now:
                         self.generate_filename()
@@ -226,14 +233,16 @@ class data_handler:
                         writeData = b"".join(self.buffer)
 
                     if self._dataDirExists:
-                        dataFile = self.dataPath / self.file_name
-                        dataWrite = Thread(target=self._writerThread, kwargs={"data":writeData, "path":dataFile, "fileLock":self.dataFileLock}, daemon=True)
-                        dataWrite.start()
+                        self.dataQueue.put(writeData)
+                        #dataFile = self.dataPath / self.file_name
+                        #dataWrite = Thread(target=self._writerThread, kwargs={"data":writeData, "path":dataFile, "fileLock":self.dataFileLock}, daemon=True)
+                        #dataWrite.start()
 
                     if self._backupDirExists:
-                        backupFile = self.backupPath / self.file_name
-                        backupWrite = Thread(target=self._writerThread, kwargs={"data":writeData, "path":backupFile, "fileLock":self.backupFileLock}, daemon=True)
-                        backupWrite.start()
+                        self.backupQueue.put(writeData)
+                        #backupFile = self.backupPath / self.file_name
+                        #backupWrite = Thread(target=self._writerThread, kwargs={"data":writeData, "path":backupFile, "fileLock":self.backupFileLock}, daemon=True)
+                        #backupWrite.start()
 
                     self.buffer.clear()  # Clear buffer after writing
                     self.last_buffer_save = datetime.now()
@@ -247,35 +256,35 @@ class data_handler:
             pass
             #print("[INFO] No Data provided at the time of writing data.")
 
-    # def _datawriteThread(self, dataQueue:queue):
-    #     while True:
-    #         try:
-    #             if self._dataDirExists():
-    #                 dataFile = self.dataPath / self.file_name
-    #                 with open(dataFile, "ab+") as f:
-    #                     while not dataQueue.Empty():
-    #                         data = dataQueue.get()
-    #                         if self._usepickle:
-    #                             pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
-    #                         else:
-    #                             f.write(data)
-    #                         f.flush()
-    #         except Exception as e:
-    #             print(f"[WARNING] Failed to write to file: {dataFile}\n {e}")
-    #             self.validate_savepoints()
+    def _datawriteThread(self, data:queue, rootDir:Path): #THIS MAY HAVE AN ISSUE SWAPPING FILES WHEN NAME IS CHANGED IF QUEUE FILLS TOO FAST
+        while True:
+            try:
+                if not data.Empty():
+                    dataFile = rootDir / self.file_name
+                    with open(dataFile, "ab+") as f:
+                        while not data.Empty():
+                            data = data.get()
+                            if self._usepickle:
+                                pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
+                            else:
+                                f.write(data)
+                            f.flush()
+            except Exception as e:
+                print(f"[WARNING] Failed to write to file: {dataFile}\n {e}")
+                self.validate_savepoints()
 
-    def _writerThread(self, data, path, fileLock):
-        try:
-            with fileLock:
-                with open(path, "ab+") as f:
-                    if self._usepickle:
-                        pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
-                    else:
-                        f.write(data)
-                    f.flush()
-        except Exception as e:
-            print(f"[WARNING] Failed to write to file: {path}\n {e}")
-            self.validate_savepoints()
+    # def _writerThread(self, data, path, fileLock):
+    #     try:
+    #         with fileLock:
+    #             with open(path, "ab+") as f:
+    #                 if self._usepickle:
+    #                     pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
+    #                 else:
+    #                     f.write(data)
+    #                 f.flush()
+    #     except Exception as e:
+    #         print(f"[WARNING] Failed to write to file: {path}\n {e}")
+    #         self.validate_savepoints()
 
     def _socketThread(self, socketQueue:queue.Queue, socketPath):
         while True:
