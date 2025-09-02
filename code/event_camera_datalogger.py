@@ -67,6 +67,8 @@ class eventCamera(Thread):
                             # packet.trigger_events is a structured numpy array
                             # with dtype [("t", "<u8"), ("id, "<u1"), ("rising", "?")])
                             pass
+                    else:
+                        events = b""
                 else:
                     events_cursor += len(packet)
                     events = packet

@@ -140,7 +140,7 @@ def _data_grouper(socketDictionary:dict, datahandler:daedalus_utils.data_handler
         #print(f"IR Cam Data :{len(IR_Data)}")
 
         event_Data = socketDictionary["event_based_camera"][2].getDataBuffer()
-        #print(f"Event Cam Data :{len(event_Data)}")
+        print(f"Event Cam Data :{len(event_Data)}")
         
         IMU_Data = socketDictionary["i_m_u"][2].getDataBuffer()
         if IMU_Data:

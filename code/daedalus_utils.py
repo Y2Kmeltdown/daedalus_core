@@ -228,63 +228,39 @@ class data_handler:
                     if self._usepickle and flush:
                         writeData = data
                     elif self._usepickle:
-                        writeData = self.buffer
+                        writeData = self.buffer.copy()
                     else:
                         writeData = b"".join(self.buffer)
 
                     if self._dataDirExists:
                         self.dataQueue.put(writeData)
-                        #dataFile = self.dataPath / self.file_name
-                        #dataWrite = Thread(target=self._writerThread, kwargs={"data":writeData, "path":dataFile, "fileLock":self.dataFileLock}, daemon=True)
-                        #dataWrite.start()
 
                     if self._backupDirExists:
                         self.backupQueue.put(writeData)
-                        #backupFile = self.backupPath / self.file_name
-                        #backupWrite = Thread(target=self._writerThread, kwargs={"data":writeData, "path":backupFile, "fileLock":self.backupFileLock}, daemon=True)
-                        #backupWrite.start()
 
                     self.buffer.clear()  # Clear buffer after writing
                     self.last_buffer_save = datetime.now()
-
-                    # if self._dataDirExists:
-                    #     dataWrite.join()
-                    
-                    # if self._backupDirExists:
-                    #     backupWrite.join()
         else:
             pass
             #print("[INFO] No Data provided at the time of writing data.")
 
-    def _datawriteThread(self, data:queue, rootDir:Path): #THIS MAY HAVE AN ISSUE SWAPPING FILES WHEN NAME IS CHANGED IF QUEUE FILLS TOO FAST
+    def _datawriteThread(self, data:queue.Queue, rootDir:Path): #THIS MAY HAVE AN ISSUE SWAPPING FILES WHEN NAME IS CHANGED IF QUEUE FILLS TOO FAST
         while True:
             try:
-                if not data.Empty():
+                if not data.empty():
                     dataFile = rootDir / self.file_name
                     with open(dataFile, "ab+") as f:
-                        while not data.Empty():
+                        while not data.empty():
                             writeData = data.get()
                             if self._usepickle:
                                 pickle.dump(writeData, f, protocol=pickle.HIGHEST_PROTOCOL)
                             else:
+                                f.seek(0, 2)
                                 f.write(writeData)
                             f.flush()
             except Exception as e:
                 print(f"[WARNING] Failed to write to file: {dataFile}\n {e}")
                 self.validate_savepoints()
-
-    # def _writerThread(self, data, path, fileLock):
-    #     try:
-    #         with fileLock:
-    #             with open(path, "ab+") as f:
-    #                 if self._usepickle:
-    #                     pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
-    #                 else:
-    #                     f.write(data)
-    #                 f.flush()
-    #     except Exception as e:
-    #         print(f"[WARNING] Failed to write to file: {path}\n {e}")
-    #         self.validate_savepoints()
 
     def _socketThread(self, socketQueue:queue.Queue, socketPath):
         while True:
