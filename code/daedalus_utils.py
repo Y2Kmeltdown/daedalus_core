@@ -247,18 +247,22 @@ class data_handler:
             pass
             #print("[INFO] No Data provided at the time of writing data.")
 
-    # def pickle_append(filename, obj):
-    #     with open(filename, 'ab+') as f:
-    #         pickle.dump(obj, f)
-    #         f.flush()
-
-    # def pickle_load(filename):
-    #     with open(filename, 'rb') as f:
-    #         while True:
-    #             try:
-    #                 yield pickle.load(f)
-    #             except EOFError:
-    #                 break
+    # def _datawriteThread(self, dataQueue:queue):
+    #     while True:
+    #         try:
+    #             if self._dataDirExists():
+    #                 dataFile = self.dataPath / self.file_name
+    #                 with open(dataFile, "ab+") as f:
+    #                     while not dataQueue.Empty():
+    #                         data = dataQueue.get()
+    #                         if self._usepickle:
+    #                             pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
+    #                         else:
+    #                             f.write(data)
+    #                         f.flush()
+    #         except Exception as e:
+    #             print(f"[WARNING] Failed to write to file: {dataFile}\n {e}")
+    #             self.validate_savepoints()
 
     def _writerThread(self, data, path, fileLock):
         try:

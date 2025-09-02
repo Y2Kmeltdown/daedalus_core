@@ -134,22 +134,28 @@ def _data_grouper(socketDictionary:dict, datahandler:daedalus_utils.data_handler
         packet_time = time.time()
 
         PiCam_Data = socketDictionary["pi_picture_camera"][2].getDataBuffer()
+        print(f"Pi Cam Data :{len(PiCam_Data)}")
 
         IR_Data = socketDictionary["infra_red_camera"][2].getDataBuffer()
+        print(f"IR Cam Data :{len(IR_Data)}")
 
         event_Data = socketDictionary["event_based_camera"][2].getDataBuffer()
-            
+        print(f"Event Cam Data :{len(event_Data)}")
+        
         IMU_Data = socketDictionary["i_m_u"][2].getDataBuffer()
         if IMU_Data:
             IMU_Data = [data.decode("utf-8") for data in IMU_Data]
+        print(f"IMU Data :{len(IMU_Data)}")
 
         Atmos_Data = socketDictionary["atmos_temp_sensor"][2].getDataBuffer()
         if Atmos_Data:
             Atmos_Data = [data.decode("utf-8") for data in Atmos_Data]
+        print(f"Atmos Data :{len(IR_Data)}")
         
         Telem_Data = socketDictionary["cube_red_telemetry"][2].getDataBuffer()
         if Telem_Data:
             Telem_Data = [data.decode("utf-8") for data in Telem_Data]
+        print(f"Telem Data :{len(IR_Data)}")
 
         try:
             GPS_data = socketDictionary["g_p_s"][1].get(block=True, timeout=gpstimeout).decode("utf-8")
