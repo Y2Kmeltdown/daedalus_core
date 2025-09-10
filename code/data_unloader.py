@@ -70,7 +70,7 @@ def parseRawEvents(directory:str, pickleData, dataType:str):
         f.write(eventData)
 
 if __name__ == "__main__":
-    filename="data\event_synced_data_20250901_102349_2.pickle"
+    filename="data\event_synced_data_20250902_154619_2.pickle"
     #filename = "data/event_synced_data_20250808_150200_1.pickle"
     pickleData = loadDaedalusPickle(filename)
     print(pickleData[0].keys())
