@@ -127,7 +127,7 @@ static PyObject* get_camera_buffer(PyObject *self, PyObject *args, PyObject *kwa
                         else {
                             memset(stretched, 0, npix);
                         }
-                        /* Convert buffer data to a Python bytes object */
+                        /* Convert buffer data to a numpy array object */
                         array = PyArray_SimpleNewFromData(2, dims, NPY_UINT8, (void*)stretched);
                         if (array == NULL) {
                             PyErr_SetString(PyExc_RuntimeError, "Failed to create NumPy array");
@@ -281,6 +281,7 @@ typedef struct {
     int iterations;
     int step;
     int is_infinite;
+    int is_raw;
     // Add any other state you need
     ArvCamera *camera;
     ArvStream *stream;
@@ -308,6 +309,7 @@ static PyObject *ir_buffer_stream_iter(PyObject *self) {
 
 // Next function - called for each iteration
 static PyObject *ir_buffer_stream_iternext(PyObject *self) {
+    import_array()
     ir_buffer_stream *gen = (ir_buffer_stream *)self;
     size_t buffer_sz;
     GError *error = NULL;
@@ -332,53 +334,73 @@ static PyObject *ir_buffer_stream_iternext(PyObject *self) {
             }
             const void *data = arv_buffer_get_data(buffer, &buffer_sz);
             if (data) {
+                /* 2) Dimensions */
                 guint width  = arv_buffer_get_image_width(buffer);
                 guint height = arv_buffer_get_image_height(buffer);
                 guint npix   = width * height;
+
+                npy_intp dims[2] = {height, width};
+                /* 3) Pixel format */
                 guint pf    = arv_buffer_get_image_pixel_format(buffer);
                 guint bpp   = ARV_PIXEL_FORMAT_BIT_PER_PIXEL(pf);
                 guint bytes = bpp / 8;
-                guint8 *outFrame = malloc(npix);
-                if (!outFrame) {
-                    g_printerr("Out of memory saving frame %lu\n", (unsigned long)frame_count);
-                    arv_stream_push_buffer(gen->stream, buffer);
-                    return PyUnicode_FromString("Out of memory");
-                } else {
-                    if (bytes == 1) {
-                        const guint8 *p = data;
-                        guint8 minv = UCHAR_MAX, maxv = 0;
-                        for (guint i = 0; i < npix; i++) {
-                            if (p[i] < minv) minv = p[i];
-                            if (p[i] > maxv) maxv = p[i];
+
+                if (gen->is_raw) {
+                    result = PyArray_SimpleNew(2, dims, NPY_UINT16);
+                    if (result == NULL) {
+                        PyErr_SetString(PyExc_RuntimeError, "Failed to create NumPy array");
+                        return NULL;
+                    }
+
+                    void* array_data = PyArray_DATA((PyArrayObject*)result);
+                    memcpy(array_data, data, buffer_sz);
+                }
+                else {
+                    guint8 *outFrame = malloc(npix);
+                    if (!outFrame) {
+                        g_printerr("Out of memory saving frame %lu\n", (unsigned long)frame_count);
+                        arv_stream_push_buffer(gen->stream, buffer);
+                        return PyUnicode_FromString("Out of memory");
+                    } else {
+                        if (bytes == 1) {
+                            const guint8 *p = data;
+                            guint8 minv = UCHAR_MAX, maxv = 0;
+                            for (guint i = 0; i < npix; i++) {
+                                if (p[i] < minv) minv = p[i];
+                                if (p[i] > maxv) maxv = p[i];
+                            }
+                            if (maxv > minv) {
+                                float scale = 255.0f / (maxv - minv);
+                                for (guint i = 0; i < npix; i++)
+                                    outFrame[i] = (guint8)((p[i] - minv) * scale + 0.5f);
+                            } else {
+                                memset(outFrame, 0, npix);
+                            }
                         }
-                        if (maxv > minv) {
-                            float scale = 255.0f / (maxv - minv);
-                            for (guint i = 0; i < npix; i++)
-                                outFrame[i] = (guint8)((p[i] - minv) * scale + 0.5f);
-                        } else {
+                        else if (bytes == 2) {
+                            const guint16 *p = data;
+                            guint16 minv = USHRT_MAX, maxv = 0;
+                            for (guint i = 0; i < npix; i++) {
+                                if (p[i] < minv) minv = p[i];
+                                if (p[i] > maxv) maxv = p[i];
+                            }
+                            if (maxv > minv) {
+                                float scale = 255.0f / (maxv - minv);
+                                for (guint i = 0; i < npix; i++)
+                                    outFrame[i] = (guint8)((p[i] - minv) * scale + 0.5f);
+                            } else {
+                                memset(outFrame, 0, npix);
+                            }
+                        }
+                        else {
                             memset(outFrame, 0, npix);
                         }
-                    }
-                    else if (bytes == 2) {
-                        const guint16 *p = data;
-                        guint16 minv = USHRT_MAX, maxv = 0;
-                        for (guint i = 0; i < npix; i++) {
-                            if (p[i] < minv) minv = p[i];
-                            if (p[i] > maxv) maxv = p[i];
-                        }
-                        if (maxv > minv) {
-                            float scale = 255.0f / (maxv - minv);
-                            for (guint i = 0; i < npix; i++)
-                                outFrame[i] = (guint8)((p[i] - minv) * scale + 0.5f);
-                        } else {
-                            memset(outFrame, 0, npix);
+                        result = PyArray_SimpleNewFromData(2, dims, NPY_UINT8, (void*)outFrame);
+                        if (result == NULL) {
+                            PyErr_SetString(PyExc_RuntimeError, "Failed to create NumPy array");
+                            return NULL;
                         }
                     }
-                    else {
-                        memset(outFrame, 0, npix);
-                    }
-                    result = PyBytes_FromStringAndSize((const char *)outFrame, npix);
-                    free(outFrame);
                 }
             } else {
                 g_printerr("No data available");
@@ -390,6 +412,8 @@ static PyObject *ir_buffer_stream_iternext(PyObject *self) {
     
     gen->current_value += gen->step;
     
+    PyArray_ENABLEFLAGS((PyArrayObject*)result, NPY_ARRAY_OWNDATA);
+
     return result;
 }
 
@@ -416,15 +440,31 @@ static int ir_buffer_streamType_init(void) {
 
 // Single factory function to create either finite or infinite generator
 static PyObject* ir_buffer_streamer(PyObject* self, PyObject* args, PyObject* kwargs) {
+    PyObject *rawCheck = NULL;
     //double framerate = 60;
     int start = 0;
     int step = 1;
     int record_time = -1;  // -1 indicates infinite (no max provided)
 
-    // static char *kwlist[] = {"framerate", NULL};
-    // if (!PyArg_ParseTupleAndKeywords(args, kwargs, "d", kwlist, &framerate)) {
-    //     return NULL; // An error occurred, exception already set
-    // }
+    // Define keyword argument names
+    static char *kwlist[] = {"raw", NULL};
+
+
+    // Parse arguments
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O", kwlist,
+                                     &rawCheck)) {
+        return NULL;  // Exception already set by parsing function
+    }
+
+    int isRaw = 0;
+    if (rawCheck != NULL) {
+        int result = PyObject_IsTrue(rawCheck);
+        
+        if (result < 0) {
+            return NULL;  // Exception occurred during conversion
+        }
+        isRaw = result;
+    }
 
     // Aravis Camera Parameters
     GError *error = NULL;
@@ -435,6 +475,8 @@ static PyObject* ir_buffer_streamer(PyObject* self, PyObject* args, PyObject* kw
     if (!gen) {
         return NULL;
     }
+
+    gen->is_raw = isRaw;
 
     // Set up camera
     gen->camera = arv_camera_new (NULL, &error);

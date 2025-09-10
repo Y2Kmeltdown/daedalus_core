@@ -63,6 +63,20 @@ try:
     buffer = aravis.get_camera_buffer(raw=False)
     print(rawBuffer)
     print(buffer)
+
+    i = 0
+    for buffer in aravis.ir_buffer_streamer(raw=False):
+        print(buffer)
+        i += 1
+        if i == 10:
+            break
+
+    i = 0
+    for buffer in aravis.ir_buffer_streamer(raw=True):
+        print(buffer)
+        i += 1
+        if i == 10:
+            break
     #rawbuffer = aravis.get_camera_buffer(raw=False)
     #print(rawbuffer)
     #rawbuffer = aravis.get_camera_buffer(raw=True)
