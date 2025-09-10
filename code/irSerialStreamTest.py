@@ -55,7 +55,7 @@ def ir_frame_logger(transciever:daedalus_utils.transceiver, fps):
         if buf:
             i+=1
             if outputPeriod == i:
-                raw = bytes(buf)
+                raw = buf.tobytes()
                 img = Image.frombytes('L', (W, H), raw, 'raw', 'L', 0, 1)
                 img = img.resize((int(W/S),int(H/S)),Image.LANCZOS)
                 bio = io.BytesIO()

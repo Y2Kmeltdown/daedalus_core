@@ -10,6 +10,7 @@ import subprocess
 from PIL import Image
 import aravis
 import daedalus_utils
+import numpy as np
 
 
 W, H = 640, 480
@@ -49,11 +50,11 @@ def ir_frame_logger(data_handler, fps: float):
     cameraFramerate = 30
     outputPeriod = int(cameraFramerate/fps)
     i = 0
-    for idx, buf in enumerate(aravis.ir_buffer_streamer()):
+    for idx, buf in enumerate(aravis.ir_buffer_streamer(raw=False)):
         if buf:
             i+=1
             if outputPeriod == i:
-                raw = bytes(buf)
+                raw = buf.tobytes()
                 # print("RAW IMAGE")
                 # print(len(raw))
                 img = Image.frombytes('L', (W, H), raw, 'raw', 'L', 0, 1)
