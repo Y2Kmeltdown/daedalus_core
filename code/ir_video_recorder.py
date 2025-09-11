@@ -1,4 +1,5 @@
 import numpy as np
+import argparse
 import cv2
 import aravis
 from PIL import Image
@@ -8,6 +9,7 @@ import subprocess
 import sys
 import os
 from queue import Queue
+from threading import Thread
 
 IP_ADDR   = "169.254.100.1/16"
 IFACE     = "eth0"
@@ -35,20 +37,17 @@ def configure_interface(addr: str = IP_ADDR, iface: str = IFACE) -> None:
     # 3. Make sure the link is up
     subprocess.run(["ip", "link", "set", "dev", iface, "up"], check=True)
 
-# Define text properties
 
-org = (25, 25)  # Bottom-left corner of text
-font = cv2.FONT_HERSHEY_SIMPLEX
-font_scale = 0.5
-color = (0, 0, 0)  # Black color (BGR format)
-thickness = 2
 
-irDataQueue = Queue()
+def irDataCollector():
+    pass
 
-def irRecord(record_time:int, videoLocation:str, framerate:int = 60):
-    starttime = datetime.now()
+def irDataSaver(videoLocation:str, dataQueue:Queue):
+    starttime = time.monotonic_ns()
+    global data_done
     width = 640
     height = 480
+    framerate = 60
 
     fourcc = cv2.VideoWriter_fourcc('F', 'F', 'V', '1')
     video_writer = cv2.VideoWriter(
@@ -60,28 +59,96 @@ def irRecord(record_time:int, videoLocation:str, framerate:int = 60):
         params=[cv2.VIDEOWRITER_PROP_DEPTH, cv2.CV_8U,
                 cv2.VIDEOWRITER_PROP_IS_COLOR, 0]
         )
+    
+    while True:
+        frame = dataQueue.get()
+        video_writer.write(frame)
+        if data_done and dataQueue.empty():
+            break
 
-    i = 0
+    endTime = time.monotonic_ns()
+
+    video_writer.release()
+    print(f"[INFO] Video '{videoLocation}' created successfully!")
+    print(f"Saving took {(endTime-starttime)/1000000000} Seconds")
+    
+
+def irRecord(record_time:int, dataFile:str, backupFile:str):
+    global data_done
+
+    # Define text properties
+
+    org = (25, 25)  # Bottom-left corner of text
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    font_scale = 0.5
+    color = (0, 0, 0)  # Black color (BGR format)
+    thickness = 1
+
+
+    data_done = False
+    starttime = datetime.now()
+    dataQueue = Queue()
+    dataThread = Thread(target=irDataSaver, args=(dataFile, dataQueue), daemon=True)
+    dataThread.start()
+
+    backupQueue = Queue()
+    backupThread = Thread(target=irDataSaver, args=(backupFile , backupQueue), daemon=True)
+    backupThread.start()
+    
     for array in aravis.ir_buffer_streamer(raw=False):
-        pass
-        # irDataQueue.put(array)
-        i += 1
+
         if isinstance(array, np.ndarray):
             text = datetime.now().strftime('%H:%M:%S')
             cv2.putText(array, text, org, font, font_scale, color, thickness, cv2.LINE_AA)
-            video_writer.write(array)
-        
-        
+            dataQueue.put(array)
+            backupQueue.put(array)
+
         if (datetime.now() - starttime).seconds >= record_time:
-            print(i)
+            data_done = True
             break
-        
+
+    dataThread.join()
+    backupThread.join()
 
 
-    video_writer.release()
-    print(f"Video '{videoLocation}' created successfully!")
+            
 
 if __name__ == "__main__":
-    configure_interface()
-    irRecord(300, "test.avi")
-    pass
+    time.sleep(3) # Wait for socket server to start first
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument(
+        "--serial", 
+        default="",
+        help="Camera serial number list. Will start recording data from all specified cameras if they are connected (for example 00050423 00051505 00051503).\nIf none are specified the first available camera will be used.",
+        nargs="+",
+        type=str
+    )
+    
+    parser.add_argument(
+        "--data",
+        default="/home/daedalus/daedalus_core/data",
+        help="Path of the directory where recordings are stored",
+    )
+    parser.add_argument(
+        "--backup",
+        default=str("/mnt/data"),
+        help="Path of the directory where recordings are backed up",
+    )
+    parser.add_argument(
+        "--record_time",
+        default=300,
+        type=int,
+        help="Time in seconds for how long to record to a single file"
+    )
+    args = parser.parse_args()
+
+    index = 0
+    while True:
+        configure_interface()
+        current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+        index += 1
+        file_name = f"{args.data}/ir_camera_data_{current_time}_{index}.avi"
+        backup_name = f"{args.backup}/ir_camera_data_{current_time}_{index}.avi"
+        irRecord(args.record_time, file_name, backup_name)
+
+

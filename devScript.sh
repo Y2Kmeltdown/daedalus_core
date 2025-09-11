@@ -18,7 +18,7 @@ sudo echo "RebootWatchdogSec=2min" >> /etc/systemd/system.conf
 
 ## Directory Setup
 sudo mkdir /mnt/data
-sudo echo "/dev/sda1  /mnt/data  auto  noatime,rw,nofail,noauto,sync,x-systemd.automount" >> /etc/fstab
+sudo echo "/dev/sda1  /mnt/data  auto  noatime,rw,nofail,noauto,x-systemd.automount" >> /etc/fstab
 
 sudo mkdir -p /usr/local/daedalus
 sudo cp -a config /usr/local/daedalus/config
