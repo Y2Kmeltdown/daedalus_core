@@ -324,90 +324,97 @@ static PyObject *ir_buffer_stream_iternext(PyObject *self) {
         ArvBuffer *buffer;
 
         // Pop and push a buffer to drop the data imediately and essentially switch to 30FPS
-        buffer = arv_stream_pop_buffer (gen->stream);
-        arv_stream_push_buffer(gen->stream, buffer);
+        //buffer = arv_stream_pop_buffer (gen->stream);
+        //arv_stream_push_buffer(gen->stream, buffer);
 
         buffer = arv_stream_pop_buffer (gen->stream);
         if (ARV_IS_BUFFER (buffer)) {
-            if (arv_buffer_get_status(buffer) != ARV_BUFFER_STATUS_SUCCESS) {
+            if (arv_buffer_get_status(buffer) != ARV_BUFFER_STATUS_SUCCESS || arv_buffer_get_payload_type(buffer) != ARV_BUFFER_PAYLOAD_TYPE_IMAGE) {
                 arv_stream_push_buffer(gen->stream, buffer);
             }
-            const void *data = arv_buffer_get_data(buffer, &buffer_sz);
-            if (data) {
-                /* 2) Dimensions */
-                guint width  = arv_buffer_get_image_width(buffer);
-                guint height = arv_buffer_get_image_height(buffer);
-                guint npix   = width * height;
+            else {
+                
+                const void *data = arv_buffer_get_data(buffer, &buffer_sz);
+                
+                if (data) {
+                    /* 2) Dimensions */
+                    guint width  = arv_buffer_get_image_width(buffer);
+                    guint height = arv_buffer_get_image_height(buffer);
+                    guint npix   = width * height;
 
-                npy_intp dims[2] = {height, width};
-                /* 3) Pixel format */
-                guint pf    = arv_buffer_get_image_pixel_format(buffer);
-                guint bpp   = ARV_PIXEL_FORMAT_BIT_PER_PIXEL(pf);
-                guint bytes = bpp / 8;
+                    npy_intp dims[2] = {height, width};
+                    /* 3) Pixel format */
+                    guint pf    = arv_buffer_get_image_pixel_format(buffer);
+                    guint bpp   = ARV_PIXEL_FORMAT_BIT_PER_PIXEL(pf);
+                    guint bytes = bpp / 8;
 
-                if (gen->is_raw) {
-                    result = PyArray_SimpleNew(2, dims, NPY_UINT16);
-                    if (result == NULL) {
-                        PyErr_SetString(PyExc_RuntimeError, "Failed to create NumPy array");
-                        return NULL;
-                    }
-
-                    void* array_data = PyArray_DATA((PyArrayObject*)result);
-                    memcpy(array_data, data, buffer_sz);
-                }
-                else {
-                    guint8 *outFrame = malloc(npix);
-                    if (!outFrame) {
-                        g_printerr("Out of memory saving frame %lu\n", (unsigned long)frame_count);
-                        arv_stream_push_buffer(gen->stream, buffer);
-                        return PyUnicode_FromString("Out of memory");
-                    } else {
-                        if (bytes == 1) {
-                            const guint8 *p = data;
-                            guint8 minv = UCHAR_MAX, maxv = 0;
-                            for (guint i = 0; i < npix; i++) {
-                                if (p[i] < minv) minv = p[i];
-                                if (p[i] > maxv) maxv = p[i];
-                            }
-                            if (maxv > minv) {
-                                float scale = 255.0f / (maxv - minv);
-                                for (guint i = 0; i < npix; i++)
-                                    outFrame[i] = (guint8)((p[i] - minv) * scale + 0.5f);
-                            } else {
-                                memset(outFrame, 0, npix);
-                            }
-                        }
-                        else if (bytes == 2) {
-                            const guint16 *p = data;
-                            guint16 minv = USHRT_MAX, maxv = 0;
-                            for (guint i = 0; i < npix; i++) {
-                                if (p[i] < minv) minv = p[i];
-                                if (p[i] > maxv) maxv = p[i];
-                            }
-                            if (maxv > minv) {
-                                float scale = 255.0f / (maxv - minv);
-                                for (guint i = 0; i < npix; i++)
-                                    outFrame[i] = (guint8)((p[i] - minv) * scale + 0.5f);
-                            } else {
-                                memset(outFrame, 0, npix);
-                            }
-                        }
-                        else {
-                            memset(outFrame, 0, npix);
-                        }
-                        result = PyArray_SimpleNewFromData(2, dims, NPY_UINT8, (void*)outFrame);
+                    if (gen->is_raw) {
+                        result = PyArray_SimpleNew(2, dims, NPY_UINT16);
                         if (result == NULL) {
                             PyErr_SetString(PyExc_RuntimeError, "Failed to create NumPy array");
                             return NULL;
                         }
+
+                        void* array_data = PyArray_DATA((PyArrayObject*)result);
+                        memcpy(array_data, data, buffer_sz);
                     }
+                    else {
+                        guint8 *outFrame = malloc(npix);
+                        if (!outFrame) {
+                            g_printerr("Out of memory saving frame %lu\n", (unsigned long)frame_count);
+                            arv_stream_push_buffer(gen->stream, buffer);
+                            return PyUnicode_FromString("Out of memory");
+                        } else {
+                            if (bytes == 1) {
+                                const guint8 *p = data;
+                                guint8 minv = UCHAR_MAX, maxv = 0;
+                                for (guint i = 0; i < npix; i++) {
+                                    if (p[i] < minv) minv = p[i];
+                                    if (p[i] > maxv) maxv = p[i];
+                                }
+                                if (maxv > minv) {
+                                    float scale = 255.0f / (maxv - minv);
+                                    for (guint i = 0; i < npix; i++)
+                                        outFrame[i] = (guint8)((p[i] - minv) * scale + 0.5f);
+                                } else {
+                                    memset(outFrame, 0, npix);
+                                }
+                            }
+                            else if (bytes == 2) {
+                                const guint16 *p = data;
+                                guint16 minv = USHRT_MAX, maxv = 0;
+                                for (guint i = 0; i < npix; i++) {
+                                    if (p[i] < minv) minv = p[i];
+                                    if (p[i] > maxv) maxv = p[i];
+                                }
+                                if (maxv > minv) {
+                                    float scale = 255.0f / (maxv - minv);
+                                    for (guint i = 0; i < npix; i++)
+                                        outFrame[i] = (guint8)((p[i] - minv) * scale + 0.5f);
+                                } else {
+                                    memset(outFrame, 0, npix);
+                                }
+                            }
+                            else {
+                                memset(outFrame, 0, npix);
+                            }
+                            result = PyArray_SimpleNewFromData(2, dims, NPY_UINT8, (void*)outFrame);
+                            if (result == NULL) {
+                                PyErr_SetString(PyExc_RuntimeError, "Failed to create NumPy array");
+                                return NULL;
+                            }
+                        }
+                    }
+                } else {
+                    g_printerr("No data available");
+                    result = PyUnicode_FromString("No data available");
                 }
-            } else {
-                g_printerr("No data available");
-                result = PyUnicode_FromString("No data available");
+                arv_stream_push_buffer (gen->stream, buffer); 
             }
-            arv_stream_push_buffer (gen->stream, buffer);
         }
+        else {
+            arv_stream_push_buffer (gen->stream, buffer); 
+        }  
     }
     
     gen->current_value += gen->step;
