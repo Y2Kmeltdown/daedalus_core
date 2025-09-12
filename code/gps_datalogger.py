@@ -68,6 +68,7 @@ def run(gpsTransciever:daedalus_utils.transceiver , gpsDataHandler:daedalus_util
                     packet_data = packet + b'\r\n'
                     buffer.append(bytes(packet_data))
                     if packet_data[0:6] == b'$GNGLL':
+                        buffer.append(b"\n")
                         gpsDataHandler.write_data(buffer)
                         buffer = []
 

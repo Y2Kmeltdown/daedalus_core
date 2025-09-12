@@ -2,14 +2,15 @@ import numpy as np
 import argparse
 import cv2
 import aravis
-from PIL import Image
 import time
-from datetime import datetime, timedelta
 import subprocess
 import sys
 import os
 from queue import Queue
 from threading import Thread
+import datetime
+
+import daedalus_utils
 
 IP_ADDR   = "169.254.100.1/16"
 IFACE     = "eth0"
@@ -138,13 +139,22 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
+    irDataHandler = daedalus_utils.data_handler(
+        sensorName="ir_video",
+        extension=".avi",
+        dataPath=args.data,
+        backupPath=args.backup,
+        recordingTime=args.record_time,
+        socketPath=args.socket
+    )
+
     index = 0
     while True:
         configure_interface()
         current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
         index += 1
-        file_name = f"{args.data}/ir_camera_data_{current_time}_{index}.avi"
-        backup_name = f"{args.backup}/ir_camera_data_{current_time}_{index}.avi"
+        file_name = f"{args.data}/ir_video_{current_time}_{index}.avi"
+        backup_name = f"{args.backup}/ir_video_{current_time}_{index}.avi"
         irRecord(args.record_time, file_name, backup_name)
 
 
