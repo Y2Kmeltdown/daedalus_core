@@ -144,8 +144,7 @@ if __name__ == "__main__":
         extension=".avi",
         dataPath=args.data,
         backupPath=args.backup,
-        recordingTime=args.record_time,
-        socketPath=args.socket
+        recordingTime=args.record_time
     )
 
     index = 0
