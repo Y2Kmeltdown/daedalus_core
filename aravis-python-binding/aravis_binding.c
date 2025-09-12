@@ -435,7 +435,6 @@ static PyObject* ir_buffer_streamer(PyObject* self, PyObject* args, PyObject* kw
 // Method definitions
 static PyMethodDef AravisMethods[] = {
     {"get_camera_buffer", (PyCFunction)get_camera_buffer, METH_VARARGS | METH_KEYWORDS, "Get a camera buffer"},
-    {"get_camera_buffers", (PyCFunction)get_camera_buffers, METH_VARARGS, "Get a list of camera buffers"},
     {"ir_buffer_streamer", (PyCFunction)ir_buffer_streamer, METH_VARARGS | METH_KEYWORDS, "Stream Camera Buffers sequentially to python"},
     {NULL, NULL, 0, NULL}  // Sentinel
 };
