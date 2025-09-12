@@ -348,7 +348,7 @@ static PyObject* ir_buffer_streamer(PyObject* self, PyObject* args, PyObject* kw
 
 
     // Parse arguments
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O", kwlist,
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO", kwlist,
                                      &rawCheck,
                                      &fpsCheck)) {
         return NULL;  // Exception already set by parsing function

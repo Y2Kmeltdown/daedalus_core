@@ -59,11 +59,15 @@ def irDataSaver(videoLocation:str, dataQueue:Queue):
         fps=framerate, 
         frameSize=(width, height),
         apiPreference=cv2.CAP_FFMPEG, # Explicitly use FFmpeg backend
-        params=[cv2.VIDEOWRITER_PROP_DEPTH, cv2.CV_16U,
+        params=[cv2.VIDEOWRITER_PROP_DEPTH, cv2.CV_8U,
                 cv2.VIDEOWRITER_PROP_IS_COLOR, 0]
         )
-    
+    i = 0
     while True:
+        # i += 1
+        # if i >= 100:
+        #     #print(dataQueue.qsize())
+        #     i = 0
         frame = dataQueue.get()
         video_writer.write(frame)
         if data_done and dataQueue.empty():
@@ -91,14 +95,14 @@ def irRecord(record_time:int, dataFile:str, backupFile:str):
     data_done = False
     starttime = datetime.now()
     dataQueue = Queue()
-    dataThread = Thread(target=irDataSaver, args=(dataFile, dataQueue), daemon=True)
+    dataThread = Thread(target=irDataSaver, args=(dataFile, dataQueue))
     dataThread.start()
 
     backupQueue = Queue()
-    backupThread = Thread(target=irDataSaver, args=(backupFile , backupQueue), daemon=True)
+    backupThread = Thread(target=irDataSaver, args=(backupFile , backupQueue))
     backupThread.start()
     
-    for array in aravis.ir_buffer_streamer(raw=True, lowFPS=True):
+    for array in aravis.ir_buffer_streamer(raw=False, lowFPS=False):
 
         if isinstance(array, np.ndarray):
             text = datetime.now().strftime('%H:%M:%S')
@@ -144,13 +148,13 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    irDataHandler = daedalus_utils.data_handler(
-        sensorName="ir_video",
-        extension=".avi",
-        dataPath=args.data,
-        backupPath=args.backup,
-        recordingTime=args.record_time
-    )
+    # irDataHandler = daedalus_utils.data_handler(
+    #     sensorName="ir_video",
+    #     extension=".avi",
+    #     dataPath=args.data,
+    #     backupPath=args.backup,
+    #     recordingTime=args.record_time
+    # )
 
     makeDirectory(args.data)
     makeDirectory(args.backup)
