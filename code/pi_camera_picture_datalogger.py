@@ -19,7 +19,7 @@ def check_request_timestamp(request, check_time):
 
 def cameraControls(camera: Picamera2, jsonConfig: str):
     if jsonConfig is not None:
-        camera.set_controls({"AfMode": controls.AfModeEnum.Manual})
+        #camera.set_controls({"AfMode": controls.AfModeEnum.Manual})
         camera.set_controls({"NoiseReductionMode": controls.draft.NoiseReductionModeEnum.Off})
         with open(jsonConfig) as f:
             settings = json.load(f)
@@ -27,7 +27,7 @@ def cameraControls(camera: Picamera2, jsonConfig: str):
             for setting, value in settings.items():
                 camera.set_controls({setting: value})
 
-def cameraHandler(camID, piCamDataHandler:daedalus_utils.data_handler, config):
+def cameraHandler(camID, piCamDataHandler:daedalus_utils.data_handler, manualConfig):
     picam = Picamera2(camID)
     config = picam.create_still_configuration()
     picam.configure(config)
@@ -35,7 +35,7 @@ def cameraHandler(camID, piCamDataHandler:daedalus_utils.data_handler, config):
     print(f"[INFO] {piCamDataHandler.sensorName} Starting snapshots", flush=True)
     picam.start()
     time.sleep(1)
-    #cameraControls(picam, config)
+    #cameraControls(picam, manualConfig)
     time.sleep(2)
     while True:
         try:
@@ -44,7 +44,7 @@ def cameraHandler(camID, piCamDataHandler:daedalus_utils.data_handler, config):
             timestr = time.strftime("%Y%m%d-%H%M%S")
             ct = datetime.datetime.now()
             check_time = time.monotonic_ns() + 5e8
-            picam.capture_file(data, format='png')
+            picam.capture_file(data, format='jpeg')
 
             imgMetadata = {
                 "filename": piCamDataHandler.file_name,
@@ -60,7 +60,6 @@ def cameraHandler(camID, piCamDataHandler:daedalus_utils.data_handler, config):
                 if not chunk:
                     break  # End of data
                 bytesList.append(chunk)
-                
             piCamDataHandler.write_data(bytesList, now=True)
             timeend = time.monotonic_ns()
             runtime = (timeend-timestart)/1000000000
@@ -75,7 +74,6 @@ def cameraHandler(camID, piCamDataHandler:daedalus_utils.data_handler, config):
         
 
 if __name__ == "__main__":
-    time.sleep(3) # Wait for socket server to start first
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument(
         "--camera", 
@@ -104,6 +102,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--config",
+        default=str("config/cam0_config.json"),
         type=str,
         help="Path to configuration json for camera properties",
     )
@@ -120,7 +119,7 @@ if __name__ == "__main__":
 
     piCamDataHandler = daedalus_utils.data_handler(
         sensorName=f"piCamera{args.camera}",
-        extension=".png",
+        extension=".jpeg",
         dataPath=args.data,
         backupPath=args.backup,
         recordingTime=0,

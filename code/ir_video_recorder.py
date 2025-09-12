@@ -39,9 +39,6 @@ def configure_interface(addr: str = IP_ADDR, iface: str = IFACE) -> None:
 
 
 
-def irDataCollector():
-    pass
-
 def irDataSaver(videoLocation:str, dataQueue:Queue):
     starttime = time.monotonic_ns()
     global data_done
