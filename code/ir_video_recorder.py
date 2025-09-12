@@ -38,7 +38,12 @@ def configure_interface(addr: str = IP_ADDR, iface: str = IFACE) -> None:
     # 3. Make sure the link is up
     subprocess.run(["ip", "link", "set", "dev", iface, "up"], check=True)
 
-
+def makeDirectory(directory_name:str):
+    try:
+        os.mkdir(directory_name)
+        print(f"Directory '{directory_name}' created.")
+    except FileExistsError:
+        print(f"Directory '{directory_name}' already exists.")
 
 def irDataSaver(videoLocation:str, dataQueue:Queue):
     starttime = time.monotonic_ns()
@@ -147,6 +152,9 @@ if __name__ == "__main__":
         recordingTime=args.record_time
     )
 
+    makeDirectory(args.data)
+    makeDirectory(args.backup)
+    
     index = 0
     while True:
         configure_interface()
