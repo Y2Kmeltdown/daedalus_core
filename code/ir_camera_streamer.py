@@ -100,7 +100,7 @@ class MjpegServer:
 
 def irFrameGen(ir_shared_memory):
     try:
-        for buffer in aravis.ir_buffer_streamer(raw=False):
+        for buffer in aravis.ir_buffer_streamer(raw=False, lowFPS=False):
             # This will run forever, or until you break
             if buffer.any():
                 with data_lock:
