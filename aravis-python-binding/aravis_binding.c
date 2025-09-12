@@ -159,120 +159,6 @@ static PyObject* get_camera_buffer(PyObject *self, PyObject *args, PyObject *kwa
     return array;
 }
 
-static PyObject* get_camera_buffers(PyObject* self, PyObject* args) {
-    PyObject *rawCheck = NULL;
-    int bufferNum;
-    size_t buffer_sz;
-    ArvCamera *camera;
-    GError *error = NULL;
-    PyObject *result_list = NULL;
-    
-    if (!PyArg_ParseTuple(args, "i", &bufferNum))
-        return NULL;
-
-    camera = arv_camera_new (NULL, &error);
-    if (ARV_IS_CAMERA (camera)) {
-        ArvStream *stream = NULL;
-        printf ("Found camera '%s'\n", arv_camera_get_model_name (camera, NULL));
-        arv_camera_set_acquisition_mode (camera, ARV_ACQUISITION_MODE_CONTINUOUS, &error);
-        if (error == NULL)
-            stream = arv_camera_create_stream (camera, NULL, NULL, &error);
-        if (ARV_IS_STREAM (stream)) {
-            int i;
-            size_t payload;
-            payload = arv_camera_get_payload (camera, &error);
-            if (error == NULL) {
-                for (i = 0; i < 20; i++)
-                    arv_stream_push_buffer (stream, arv_buffer_new (payload, NULL));
-            }
-            if (error == NULL)
-                arv_camera_start_acquisition (camera, &error);
-            if (error == NULL) {
-                result_list = PyList_New(0);
-                for (i = 0; i < bufferNum; i++) {
-                    ArvBuffer *buffer;
-                    buffer = arv_stream_pop_buffer (stream);
-                    if (ARV_IS_BUFFER (buffer)) {
-                        if (arv_buffer_get_status(buffer) != ARV_BUFFER_STATUS_SUCCESS) {
-                            PyList_Append(result_list, PyUnicode_FromString("Incomplete buffer"));
-                            arv_stream_push_buffer(stream, buffer);
-                            continue;
-                        }
-                        const void *raw = arv_buffer_get_data(buffer, &buffer_sz);
-                        if (raw) {
-                            guint width  = arv_buffer_get_image_width(buffer);
-                            guint height = arv_buffer_get_image_height(buffer);
-                            guint npix   = width * height;
-                            guint pf    = arv_buffer_get_image_pixel_format(buffer);
-                            guint bpp   = ARV_PIXEL_FORMAT_BIT_PER_PIXEL(pf);
-                            guint bytes = bpp / 8;
-                            guint8 *stretched = malloc(npix);
-                            if (!stretched) {
-                                g_printerr("Out of memory saving frame %lu\n", (unsigned long)frame_count);
-                                PyList_Append(result_list, PyUnicode_FromString("Out of memory"));
-                            } else {
-                                if (bytes == 1) {
-                                    const guint8 *p = raw;
-                                    guint8 minv = UCHAR_MAX, maxv = 0;
-                                    for (guint i = 0; i < npix; i++) {
-                                        if (p[i] < minv) minv = p[i];
-                                        if (p[i] > maxv) maxv = p[i];
-                                    }
-                                    if (maxv > minv) {
-                                        float scale = 255.0f / (maxv - minv);
-                                        for (guint i = 0; i < npix; i++)
-                                            stretched[i] = (guint8)((p[i] - minv) * scale + 0.5f);
-                                    } else {
-                                        memset(stretched, 0, npix);
-                                    }
-                                }
-                                else if (bytes == 2) {
-                                    const guint16 *p = raw;
-                                    guint16 minv = USHRT_MAX, maxv = 0;
-                                    for (guint i = 0; i < npix; i++) {
-                                        if (p[i] < minv) minv = p[i];
-                                        if (p[i] > maxv) maxv = p[i];
-                                    }
-                                    if (maxv > minv) {
-                                        float scale = 255.0f / (maxv - minv);
-                                        for (guint i = 0; i < npix; i++)
-                                            stretched[i] = (guint8)((p[i] - minv) * scale + 0.5f);
-                                    } else {
-                                        memset(stretched, 0, npix);
-                                    }
-                                }
-                                else {
-                                    memset(stretched, 0, npix);
-                                }
-                                PyObject *py_bytes = PyBytes_FromStringAndSize((const char *)stretched, npix);
-                                PyList_Append(result_list, py_bytes);
-                                Py_DECREF(py_bytes);
-                                free(stretched);
-                            }
-                        } else {
-                            PyList_Append(result_list, PyUnicode_FromString("No data available"));
-                        }
-                        arv_stream_push_buffer (stream, buffer);
-                    } else {
-                        PyList_Append(result_list, PyUnicode_FromString("Invalid buffer"));
-                    }
-                }
-            }
-            if (error == NULL)
-                arv_camera_stop_acquisition (camera, &error);
-            g_clear_object (&stream);
-        }
-        g_clear_object (&camera);
-    }
-    if (error != NULL) {
-        printf ("Error: %s\n", error->message);
-        if (!result_list) result_list = PyList_New(0);
-        PyList_Append(result_list, PyUnicode_FromString("Error"));
-    }
-    if (!result_list) result_list = PyList_New(0);
-    return result_list;
-}
-
 // Generator state struct
 typedef struct {
     PyObject_HEAD
@@ -282,6 +168,7 @@ typedef struct {
     int step;
     int is_infinite;
     int is_raw;
+    int is_30fps;
     // Add any other state you need
     ArvCamera *camera;
     ArvStream *stream;
@@ -324,8 +211,10 @@ static PyObject *ir_buffer_stream_iternext(PyObject *self) {
         ArvBuffer *buffer;
 
         // Pop and push a buffer to drop the data imediately and essentially switch to 30FPS
-        //buffer = arv_stream_pop_buffer (gen->stream);
-        //arv_stream_push_buffer(gen->stream, buffer);
+        if (gen->is_30fps) {
+            buffer = arv_stream_pop_buffer (gen->stream);
+            arv_stream_push_buffer(gen->stream, buffer);
+        }
 
         buffer = arv_stream_pop_buffer (gen->stream);
         if (ARV_IS_BUFFER (buffer)) {
@@ -448,18 +337,20 @@ static int ir_buffer_streamType_init(void) {
 // Single factory function to create either finite or infinite generator
 static PyObject* ir_buffer_streamer(PyObject* self, PyObject* args, PyObject* kwargs) {
     PyObject *rawCheck = NULL;
+    PyObject *fpsCheck = NULL;
     //double framerate = 60;
     int start = 0;
     int step = 1;
     int record_time = -1;  // -1 indicates infinite (no max provided)
 
     // Define keyword argument names
-    static char *kwlist[] = {"raw", NULL};
+    static char *kwlist[] = {"raw", "lowFPS", NULL};
 
 
     // Parse arguments
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O", kwlist,
-                                     &rawCheck)) {
+                                     &rawCheck,
+                                     &fpsCheck)) {
         return NULL;  // Exception already set by parsing function
     }
 
@@ -473,6 +364,16 @@ static PyObject* ir_buffer_streamer(PyObject* self, PyObject* args, PyObject* kw
         isRaw = result;
     }
 
+    int is30fps = 0;
+    if (fpsCheck != NULL) {
+        int result = PyObject_IsTrue(fpsCheck);
+        
+        if (result < 0) {
+            return NULL;  // Exception occurred during conversion
+        }
+        is30fps = result;
+    }
+
     // Aravis Camera Parameters
     GError *error = NULL;
     //gboolean frameset = 1;
@@ -484,6 +385,8 @@ static PyObject* ir_buffer_streamer(PyObject* self, PyObject* args, PyObject* kw
     }
 
     gen->is_raw = isRaw;
+
+    gen->is_30fps = is30fps;
 
     // Set up camera
     gen->camera = arv_camera_new (NULL, &error);
@@ -511,7 +414,7 @@ static PyObject* ir_buffer_streamer(PyObject* self, PyObject* args, PyObject* kw
             size_t payload;
             payload = arv_camera_get_payload (gen->camera, &error);
             if (error == NULL) {
-                for (i = 0; i < 100; i++)
+                for (i = 0; i < 300; i++)
                     arv_stream_push_buffer (gen->stream, arv_buffer_new (payload, NULL));
             }
             if (error == NULL)

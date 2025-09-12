@@ -53,7 +53,7 @@ def irDataSaver(videoLocation:str, dataQueue:Queue):
         fps=framerate, 
         frameSize=(width, height),
         apiPreference=cv2.CAP_FFMPEG, # Explicitly use FFmpeg backend
-        params=[cv2.VIDEOWRITER_PROP_DEPTH, cv2.CV_8U,
+        params=[cv2.VIDEOWRITER_PROP_DEPTH, cv2.CV_16U,
                 cv2.VIDEOWRITER_PROP_IS_COLOR, 0]
         )
     
@@ -66,11 +66,11 @@ def irDataSaver(videoLocation:str, dataQueue:Queue):
     endTime = time.monotonic_ns()
 
     video_writer.release()
-    print(f"[INFO] Video '{videoLocation}' created successfully!")
-    print(f"Saving took {(endTime-starttime)/1000000000} Seconds")
+    print(f"[INFO] Video '{videoLocation}' created successfully!", flush=True)
     
 
 def irRecord(record_time:int, dataFile:str, backupFile:str):
+    print("[INFO] IR Camera Recorder starting", flush=True)
     global data_done
 
     # Define text properties
@@ -92,7 +92,7 @@ def irRecord(record_time:int, dataFile:str, backupFile:str):
     backupThread = Thread(target=irDataSaver, args=(backupFile , backupQueue), daemon=True)
     backupThread.start()
     
-    for array in aravis.ir_buffer_streamer(raw=False):
+    for array in aravis.ir_buffer_streamer(raw=True, lowFPS=True):
 
         if isinstance(array, np.ndarray):
             text = datetime.now().strftime('%H:%M:%S')
