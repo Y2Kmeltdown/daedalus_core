@@ -8,7 +8,7 @@ import sys
 import os
 from queue import Queue
 from threading import Thread
-import datetime
+from datetime import datetime
 
 import daedalus_utils
 
@@ -144,8 +144,7 @@ if __name__ == "__main__":
         extension=".avi",
         dataPath=args.data,
         backupPath=args.backup,
-        recordingTime=args.record_time,
-        socketPath=args.socket
+        recordingTime=args.record_time
     )
 
     index = 0

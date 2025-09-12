@@ -56,7 +56,7 @@ def eventProducer(serial, config, dims, event_shared_memory):
 
 def irFrameGen(ir_shared_memory:shared_memory.SharedMemory):
     try:
-        for buffer in aravis.ir_buffer_streamer(raw=False):
+        for buffer in aravis.ir_buffer_streamer(raw=False, lowFPS=False):
             # This will run forever, or until you break
             if buffer:
                 with data_lock:

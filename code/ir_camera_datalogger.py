@@ -50,7 +50,7 @@ def ir_frame_logger(data_handler, fps: float):
     cameraFramerate = 30
     outputPeriod = int(cameraFramerate/fps)
     i = 0
-    for idx, buf in enumerate(aravis.ir_buffer_streamer(raw=False)):
+    for idx, buf in enumerate(aravis.ir_buffer_streamer(raw=False, lowFPS=True)):
         if buf.any():
             i+=1
             if outputPeriod == i:

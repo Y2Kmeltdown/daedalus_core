@@ -65,14 +65,14 @@ try:
     print(buffer)
 
     i = 0
-    for buffer in aravis.ir_buffer_streamer(raw=False):
+    for buffer in aravis.ir_buffer_streamer(raw=False, lowFPS=False):
         print(buffer)
         i += 1
         if i == 10:
             break
 
     i = 0
-    for buffer in aravis.ir_buffer_streamer(raw=True):
+    for buffer in aravis.ir_buffer_streamer(raw=True, lowFPS=True):
         print(buffer)
         i += 1
         if i == 10:
