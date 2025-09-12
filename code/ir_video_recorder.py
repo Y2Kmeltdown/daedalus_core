@@ -8,7 +8,7 @@ import sys
 import os
 from queue import Queue
 from threading import Thread
-import datetime
+from datetime import datetime
 
 import daedalus_utils
 
