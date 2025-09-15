@@ -111,9 +111,19 @@ class eventCamera(Thread):
     def getEventBuffer(self):
         with data_lock:
             events = self.eventList
+            if events:
+                eventData = b"".join(events)
+                byteSize = len(eventData)
+                eventCutoff = byteSize % 21
+                eventPacket = eventData[:-eventCutoff]
+                eventRemainder = eventData[-eventCutoff:]
+            else:
+                eventPacket = b""
+                eventRemainder = b""
+                
             measurements = self.measurementList
             samples = self.sampleList
-            self.eventList = []
+            self.eventList = [eventRemainder]
             self.measurementList = []
             self.sampleList = []
             measurementData = {
@@ -121,7 +131,7 @@ class eventCamera(Thread):
                 "samples": samples
             }
             self.measureDataHandler.write_data(json.dumps(measurementData,indent=None)+"\n")
-            self.eventDataHandler.write_data(events)
+            self.eventDataHandler.write_data(eventPacket)
         return events
     
 def check_event_camera(serialNumberList):
