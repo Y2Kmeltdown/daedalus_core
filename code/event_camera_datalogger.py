@@ -63,7 +63,6 @@ class eventCamera(Thread):
                 if self.raw == False:
                     if packet:
                         if packet.polarity_events is not None:
-                            print(packet.polarity_events.dtype)
                             events_cursor += len(packet.polarity_events)
                             events = packet.polarity_events.tobytes()
                         if packet.trigger_events is not None:
