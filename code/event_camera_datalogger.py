@@ -41,9 +41,11 @@ class eventCamera(Thread):
         self.eventList = []
         self.measurementList = []
         self.sampleList = []
+        self.packetSize = 21
         
     
     def run(self):
+    
         with nd.open(raw=self.raw, serial=self.serial, configuration=self.configuration) as device:
             print(f"[INFO] Successfully started EVK4 at serial: {self.serial}", flush=True)
             # Save the camera biases (metadata)
@@ -61,6 +63,7 @@ class eventCamera(Thread):
                 if self.raw == False:
                     if packet:
                         if packet.polarity_events is not None:
+                            print(packet.polarity_events.dtype)
                             events_cursor += len(packet.polarity_events)
                             events = packet.polarity_events.tobytes()
                         if packet.trigger_events is not None:
@@ -75,6 +78,8 @@ class eventCamera(Thread):
 
                 with data_lock:
                     self.eventList.append(events)
+
+                
                 
                 # Prepare sample data
                 try:
@@ -112,11 +117,15 @@ class eventCamera(Thread):
         with data_lock:
             events = self.eventList
             if events:
-                eventData = b"".join(events)
-                byteSize = len(eventData)
-                eventCutoff = byteSize % 21
-                eventPacket = eventData[:-eventCutoff]
-                eventRemainder = eventData[-eventCutoff:]
+                if self.raw:
+                    eventData = b"".join(events)
+                    byteSize = len(eventData)
+                    eventCutoff = byteSize % self.packetSize
+                    eventPacket = eventData[:-eventCutoff]
+                    eventRemainder = eventData[-eventCutoff:]
+                else:
+                    eventPacket = b"".join(events)
+                    eventRemainder = b""
             else:
                 eventPacket = b""
                 eventRemainder = b""
@@ -219,12 +228,17 @@ if __name__ == "__main__":
         evkSerialList = check_event_camera(args.serial)
 
     if evkSerialList:
+        raw = False
+        if raw:
+            ext = ".raw"
+        else:
+            ext = ".npy"
         serial = evkSerialList[0]
         eventCameraDict = {}
         metadataList = []
         eventData = daedalus_utils.data_handler(
             sensorName=f"evk4_{serial}",
-            extension=".raw",
+            extension=ext,
             dataPath=args.data,
             backupPath=args.backup,
             recordingTime=args.record_time,
@@ -244,7 +258,6 @@ if __name__ == "__main__":
             backupPath=args.backup,
             recordingTime=args.record_time
             )
-        raw = False
         camera = eventCamera(
             serial=serial, 
             configuration=configuration, 
