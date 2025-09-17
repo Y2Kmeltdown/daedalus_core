@@ -1,6 +1,9 @@
 import pickle
 import cv2
 import numpy as np
+import event_stream
+import pathlib
+from tqdm import tqdm
 
 def flatten(xss):
     return [x for xs in xss for x in xs]
@@ -74,13 +77,29 @@ def decodeEVKArray(evkBytes:bytes):
     array = np.frombuffer(evkBytes, dtype=event_dtype)
     return array
 
+def encodeESFile(esFilename:str, numpy_array_list):
+    encoder = event_stream.Encoder(esFilename, 'dvs', 1280, 720)
+    for npy_array in tqdm(numpy_array_list):
+        encoder.write(npy_array)
+
+def npyToEs(inputFile, outputFile):
+    with open(inputFile, 'rb') as f:
+        data = f.read()
+    npyArray = decodeEVKArray(data)
+    split_arrays = np.array_split(npyArray, 100)
+    encodeESFile(outputFile, split_arrays)
+
 if __name__ == "__main__":
-    filename="data\event_synced_data_20250902_154619_2.pickle"
+    inputFilename="data\\evk4_00050420_data_20250917_144733_1.npy"
+    inputFile = pathlib.Path(inputFilename)
+    inputStem=inputFile.stem
+    outputFile = "recordings\\" + inputStem + ".es"
+    npyToEs(inputFile, outputFile)
     #filename = "data/event_synced_data_20250808_150200_1.pickle"
-    pickleData = loadDaedalusPickle(filename)
-    print(pickleData[0].keys())
+    #pickleData = loadDaedalusPickle(filename)
+    #print(pickleData[0].keys())
     #with open("recordings\\testWorking.raw", 'wb') as f:
         #f.write(pickleData[15]["Event_data"][0])
-    parseImages("renders",pickleData,"Picam_data")
-    parseVideo("renders",pickleData,"IR_data")
+    #parseImages("renders",pickleData,"Picam_data")
+    #parseVideo("renders",pickleData,"IR_data")
     #parseRawEvents("recordings", pickleData, "Event_data")
