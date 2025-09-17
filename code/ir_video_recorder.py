@@ -96,13 +96,16 @@ def irRecord(record_time:int, dataFile:str, backupFile:str):
     starttime = datetime.now()
     dataQueue = Queue()
     dataThread = Thread(target=irDataSaver, args=(dataFile, dataQueue))
-    dataThread.start()
 
     backupQueue = Queue()
     backupThread = Thread(target=irDataSaver, args=(backupFile , backupQueue))
-    backupThread.start()
     
+    firstIteration = True
     for array in aravis.ir_buffer_streamer(raw=False, lowFPS=False):
+        if firstIteration is True:
+            dataThread.start()
+            backupThread.start()
+            firstIteration = False
 
         if isinstance(array, np.ndarray):
             text = datetime.now().strftime('%H:%M:%S')

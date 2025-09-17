@@ -69,6 +69,11 @@ def parseRawEvents(directory:str, pickleData, dataType:str):
     with open(output_filename, "wb") as f:
         f.write(eventData)
 
+def decodeEVKArray(evkBytes:bytes):
+    event_dtype = [('t', '<u8'), ('x', '<u2'), ('y', '<u2'), ('on', '?')]
+    array = np.frombuffer(evkBytes, dtype=event_dtype)
+    return array
+
 if __name__ == "__main__":
     filename="data\event_synced_data_20250902_154619_2.pickle"
     #filename = "data/event_synced_data_20250808_150200_1.pickle"
