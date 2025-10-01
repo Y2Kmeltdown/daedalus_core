@@ -91,5 +91,11 @@ sudo chmod 644 /lib/systemd/system/external_watchdog.service
 sudo systemctl daemon-reload
 sudo systemctl enable external_watchdog.service
 
+## RTC installation
+sudo cp /usr/local/daedalus/config/rtc.service /lib/systemd/system/rtc.service
+sudo chmod 644 /lib/systemd/system/rtc.service
+sudo systemctl daemon-reload
+sudo systemctl enable rtc.service
+
 ## Reboot
 sudo reboot

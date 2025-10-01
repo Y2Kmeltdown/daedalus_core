@@ -113,6 +113,12 @@ sudo chmod 644 /lib/systemd/system/buzzer.service
 sudo systemctl daemon-reload
 sudo systemctl enable buzzer.service
 
+## RTC installation
+sudo cp /usr/local/daedalus/config/rtc.service /lib/systemd/system/rtc.service
+sudo chmod 644 /lib/systemd/system/rtc.service
+sudo systemctl daemon-reload
+sudo systemctl enable rtc.service
+
 
 
 

@@ -1,0 +1,11 @@
+[Unit]
+Description=RTC
+After=network.target
+
+[Service]
+Type=idle
+User=root
+ExecStart=/usr/bin/python /usr/local/daedalus/code/RTC.py
+
+[Install]
+WantedBy=multi-user.target
