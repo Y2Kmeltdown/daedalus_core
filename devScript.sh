@@ -24,10 +24,12 @@ sudo mkdir -p /usr/local/daedalus
 sudo cp -a config /usr/local/daedalus/config
 
 ## REPOSITORY FETCH
-sudo apt-get update
+sudo add-apt-repository ppa:deadsnakes/ppa
+
+sudo apt update
 
 ## I2C Tools install
-sudo apt-get install -y \
+sudo apt install -y \
     i2c-tools
 
 ## RUST INSTALLATION
