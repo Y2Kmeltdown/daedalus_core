@@ -24,6 +24,10 @@ sudo mkdir -p /usr/local/daedalus
 sudo cp -a config /usr/local/daedalus/config
 
 ## REPOSITORY FETCH
+sudo apt update
+
+sudo apt install software-properties-common
+
 sudo add-apt-repository ppa:deadsnakes/ppa
 
 sudo apt update
