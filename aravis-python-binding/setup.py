@@ -1,5 +1,6 @@
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
+import numpy
 import sys
 import os
 import platform
@@ -30,6 +31,7 @@ aravis_module = Extension(
         '/usr/local/include/aravis-0.8',  # macOS
         '/usr/include/glib-2.0',  # GLib main headers
         '/usr/lib/aarch64-linux-gnu/glib-2.0/include',  # GLib generated headers
+        numpy.get_include()
     ],
     library_dirs=[
         '/usr/lib',  # Linux
