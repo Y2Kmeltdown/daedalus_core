@@ -38,11 +38,11 @@ sudo cp -a config /usr/local/daedalus/config
 sudo sed -i "s@/usr/local/daedalus/data@$DAEDALUS_DIR@g" /usr/local/daedalus/config/supervisord.conf
 
 ## REPOSITORY FETCH
-sudo apt update
+##sudo apt update
 
-sudo apt install software-properties-common
+##sudo apt install software-properties-common
 
-sudo add-apt-repository ppa:deadsnakes/ppa
+##sudo add-apt-repository ppa:deadsnakes/ppa
 
 sudo apt update
 
@@ -58,7 +58,7 @@ echo "export PATH=$HOME/.cargo/bin:${PATH}" >> ~/.bashrc
 
 ## PYTHON INSTALLATION
 sudo apt install -y \
-    python3.11 \
+    python3 \
     python3-pip
 
 sudo apt install -y python3-picamera2 --no-install-recommends
