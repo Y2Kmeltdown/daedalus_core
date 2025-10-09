@@ -26,12 +26,6 @@ sudo cp -a config /usr/local/daedalus/config
 ## REPOSITORY FETCH
 sudo apt update
 
-sudo apt install software-properties-common
-
-sudo add-apt-repository ppa:deadsnakes/ppa
-
-sudo apt update
-
 ## I2C Tools install
 sudo apt install -y \
     i2c-tools
@@ -44,7 +38,7 @@ echo "export PATH=$HOME/.cargo/bin:${PATH}" >> ~/.bashrc
 
 ## PYTHON INSTALLATION
 sudo apt install -y \
-    python3.11 \
+    python3 \
     python3-pip
 
 sudo apt install -y python3-picamera2 --no-install-recommends
