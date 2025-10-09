@@ -43,7 +43,7 @@ sudo add-apt-repository ppa:deadsnakes/ppa
 sudo apt update
 
 ## I2C Tools install
-sudo apt-get install -y \
+sudo apt install -y \
     i2c-tools
 
 ## RUST INSTALLATION
@@ -53,7 +53,7 @@ export PATH="$HOME/.cargo/bin:${PATH}"
 echo "export PATH=$HOME/.cargo/bin:${PATH}" >> ~/.bashrc
 
 ## PYTHON INSTALLATION
-sudo apt-get install -y \
+sudo apt install -y \
     python3.11 \
     python3-pip
 
@@ -101,7 +101,7 @@ cd lg-master
 sudo make install
 cd ~
 
-sudo apt-get install -y \
+sudo apt install -y \
     ttf-wqy-zenhei
 
 sudo cp /usr/local/daedalus/config/external_watchdog.service /lib/systemd/system/external_watchdog.service
@@ -128,7 +128,7 @@ sudo systemctl enable rtc.service
 sudo mkdir -p /etc/supervisor/conf.d
 sudo cp /usr/local/daedalus/config/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-sudo apt-get install -y \
+sudo apt install -y \
     supervisor
 
 ## NETWORK SET UP AND FINALISATION
