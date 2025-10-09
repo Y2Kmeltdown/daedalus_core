@@ -38,6 +38,10 @@ sudo cp -a config /usr/local/daedalus/config
 sudo sed -i "s@/usr/local/daedalus/data@$DAEDALUS_DIR@g" /usr/local/daedalus/config/supervisord.conf
 
 ## REPOSITORY FETCH
+sudo apt update
+
+sudo apt install software-properties-common
+
 sudo add-apt-repository ppa:deadsnakes/ppa
 
 sudo apt update
