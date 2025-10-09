@@ -39,7 +39,7 @@ export PATH="$HOME/.cargo/bin:${PATH}"
 echo "export PATH=$HOME/.cargo/bin:${PATH}" >> ~/.bashrc
 
 ## PYTHON INSTALLATION
-sudo apt-get install -y \
+sudo apt install -y \
     python3.11 \
     python3-pip
 
@@ -85,7 +85,7 @@ cd lg-master
 sudo make install
 cd ~
 
-sudo apt-get install -y \
+sudo apt install -y \
     ttf-wqy-zenhei
 
 sudo cp /usr/local/daedalus/config/external_watchdog.service /lib/systemd/system/external_watchdog.service
