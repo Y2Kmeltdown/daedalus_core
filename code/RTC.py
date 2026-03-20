@@ -7,10 +7,6 @@ def update_clock_time():
     if os.geteuid() != 0:
         sys.exit("[ERROR] Please run this script with sudo (needs NET_ADMIN)")
     subprocess.run(
-            ["hwclock", "-w"],
-            check=True
-        )
-    subprocess.run(
             ["hwclock", "-s"],
             check=True
         )
