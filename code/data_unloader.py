@@ -87,18 +87,49 @@ def encodeESFile(esFilename:str, numpy_array_list):
 
 def npyToEs(inputFile, outputFile):
     print(f"Converting {inputFile} to {outputFile}")
-    with open(inputFile, 'rb') as f:
-        data = f.read()
-    npyArray = decodeEVKArray(data)
-    
-    split_arrays = np.array_split(npyArray, 100)
-    encodeESFile(outputFile, split_arrays)
+    try:
+        with open(inputFile, 'rb') as f:
+            data = f.read()
+        npyArray = decodeEVKArray(data)
+        test = npyArray.copy()
+        test["y"] = 719 - test["y"]
+            
+        split_arrays = np.array_split(test, 100)
 
+        try:
+            encodeESFile(outputFile, split_arrays)
+        except:
+            pass
+    except Exception as e:
+        pass
+
+def timelapse(inputDirectory, outputFile):
+
+    framerate = 20
+    resolution = (4056, 3040)
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    video_writer = cv2.VideoWriter(
+        filename=outputFile, 
+        fourcc=fourcc,
+        fps=framerate, 
+        frameSize=resolution
+    )
+
+    files = [pathlib.Path(inputDirectory+"/"+i) for i in os.listdir(inputDirectory)]
+    for file in tqdm(files):
+        image = cv2.imread(file)
+        video_writer.write(image)
+
+    video_writer.release()
+    print(f"Video '{outputFile}' created successfully with the image.")
 
 if __name__ == "__main__":
+    pictureDirectory = "data"
+    #timelapse(pictureDirectory, "recordings/pi_picture.mp4")
+    
     dataDirectory = "data"
     files = [pathlib.Path(dataDirectory+"/"+i) for i in os.listdir(dataDirectory)]
-    print(files)
+    #print(files)
     for inFile in files:
         if inFile.suffix == ".npy":
             outFile = "recordings\\" + inFile.stem + ".es"
